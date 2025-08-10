@@ -1,0 +1,14 @@
+pokemon_app/.env
+pokemon_app/__pycache__/
+pokemon_app/migrations/
+pokemon_app/services/__pycache__/
+pokemon_app/gui/__pycache__/
+pokemon_app/controllers/__pycache__/
+pokemon_app/db/__pycache__
+pokemon_app/utils/__pycache__
+pokemon_app/parsing/__pycache__
+pokemon_app/models/__pycache__
+
+db.sqlite3
+
+.venv

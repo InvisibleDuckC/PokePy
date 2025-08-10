@@ -1,0 +1,70 @@
+{
+  "Tauros-Paldea-Aqua": [
+    "Fighting",
+    "Water"
+  ],
+  "Kingambit": [
+    "Dark",
+    "Steel"
+  ],
+  "Rillaboom": [
+    "Grass"
+  ],
+  "Volcarona": [
+    "Bug",
+    "Fire"
+  ],
+  "Clefable": [
+    "Fairy"
+  ],
+  "Gengar": [
+    "Ghost",
+    "Poison"
+  ],
+  "Ceruledge": [
+    "Fire",
+    "Ghost"
+  ],
+  "Gastrodon": [
+    "Water",
+    "Ground"
+  ],
+  "Dragonite": [
+    "Dragon",
+    "Flying"
+  ],
+  "Sneasler": [
+    "Fighting",
+    "Poison"
+  ],
+  "Excadrill": [
+    "Ground",
+    "Steel"
+  ],
+  "Magmar": [
+    "Fire"
+  ],
+  "Tyranitar": [
+    "Rock",
+    "Dark"
+  ],
+  "Corviknight": [
+    "Flying",
+    "Steel"
+  ],
+  "Indeedee": [
+    "Psychic",
+    "Normal"
+  ],
+  "Sylveon": [
+    "Fairy"
+  ],
+  "Glimmora": [
+    "Rock",
+    "Poison"
+  ],
+  "Ninetales-Alola": [
+    "Ice",
+    "Fairy"
+  ]
+}

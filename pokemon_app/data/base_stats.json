@@ -1,0 +1,146 @@
+{
+  "Rillaboom": {
+    "HP": 100,
+    "Atk": 125,
+    "Def": 90,
+    "SpA": 60,
+    "SpD": 70,
+    "Spe": 85
+  },
+  "Dragonite": {
+    "HP": 91,
+    "Atk": 134,
+    "Def": 95,
+    "SpA": 100,
+    "SpD": 100,
+    "Spe": 80
+  },
+  "Pikachu": {
+    "HP": 35,
+    "Atk": 55,
+    "Def": 40,
+    "SpA": 50,
+    "SpD": 50,
+    "Spe": 90
+  },
+  "Corviknight": {
+    "HP": 98,
+    "Atk": 87,
+    "Def": 105,
+    "SpA": 53,
+    "SpD": 85,
+    "Spe": 67
+  },
+  "Tyranitar": {
+    "HP": 100,
+    "Atk": 134,
+    "Def": 110,
+    "SpA": 95,
+    "SpD": 100,
+    "Spe": 61
+  },
+  "Magmar": {
+    "HP": 65,
+    "Atk": 95,
+    "Def": 57,
+    "SpA": 100,
+    "SpD": 85,
+    "Spe": 93
+  },
+  "Excadrill": {
+    "HP": 110,
+    "Atk": 135,
+    "Def": 60,
+    "SpA": 50,
+    "SpD": 65,
+    "Spe": 88
+  },
+  "Kingambit": {
+    "HP": 100,
+    "Atk": 135,
+    "Def": 120,
+    "SpA": 60,
+    "SpD": 85,
+    "Spe": 50
+  },
+  "Sneasler": {
+    "HP": 80,
+    "Atk": 130,
+    "Def": 60,
+    "SpA": 40,
+    "SpD": 80,
+    "Spe": 120
+  },
+  "Gastrodon": {
+    "HP": 111,
+    "Atk": 83,
+    "Def": 68,
+    "SpA": 92,
+    "SpD": 82,
+    "Spe": 39
+  },
+  "Ceruledge": {
+    "HP": 75,
+    "Atk": 125,
+    "Def": 80,
+    "SpA": 60,
+    "SpD": 100,
+    "Spe": 85
+  },
+  "Gengar": {
+    "HP": 60,
+    "Atk": 65,
+    "Def": 60,
+    "SpA": 130,
+    "SpD": 75,
+    "Spe": 110
+  },
+  "Clefable": {
+    "HP": 95,
+    "Atk": 70,
+    "Def": 73,
+    "SpA": 95,
+    "SpD": 90,
+    "Spe": 60
+  },
+  "Volcarona": {
+    "HP": 85,
+    "Atk": 60,
+    "Def": 65,
+    "SpA": 135,
+    "SpD": 105,
+    "Spe": 100
+  },
+  "Tauros-Paldea-Aqua": {
+    "HP": 75,
+    "Atk": 110,
+    "Def": 105,
+    "SpA": 30,
+    "SpD": 70,
+    "Spe": 100
+  },
+  "Ninetales-Alola": {
+    "HP": 73,
+    "Atk": 67,
+    "Def": 75,
+    "SpA": 81,
+    "SpD": 100,
+    "Spe": 109
+  },
+  "Glimmora": {
+    "HP": 83,
+    "Atk": 55,
+    "Def": 90,
+    "SpA": 130,
+    "SpD": 81,
+    "Spe": 86
+  },
+  "Sylveon": {
+    "HP": 95,
+    "Atk": 65,
+    "Def": 65,
+    "SpA": 110,
+    "SpD": 130,
+    "Spe": 60
+  }
+}

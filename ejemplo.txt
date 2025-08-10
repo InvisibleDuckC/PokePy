@@ -1,0 +1,10 @@
+Rillaboom (F) @ Miracle Seed
+Ability: Grassy Surge
+Level: 50
+Tera Type: Fire
+EVs: 236 HP / 196 Atk / 4 Def / 52 SpD / 20 Spe
+Adamant Nature
+- Wood Hammer
+- Grassy Glide
+- Fake Out
+- High Horsepower
