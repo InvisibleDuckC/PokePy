@@ -115,7 +115,8 @@ class PokemonApp(ttk.Frame):
         nb = ttk.Notebook(self)
         nb.pack(fill="both", expand=True, padx=8, pady=8)
 
-        # Tab 1: Ingresar Set
+
+        # --- Tab 1: Ingresar Set ---
         tab_input = ttk.Frame(nb)
         nb.add(tab_input, text="Ingresar Set")
 
@@ -159,7 +160,6 @@ class PokemonApp(ttk.Frame):
             ("Moves", self.p_moves),
         ]
 
-
         for i,(label, var) in enumerate(rows):
             ttk.Label(grid, text=label, width=10).grid(row=i, column=0, sticky="w", padx=2, pady=2)
             ttk.Entry(grid, textvariable=var).grid(row=i, column=1, sticky="ew", padx=2, pady=2)
@@ -173,7 +173,11 @@ class PokemonApp(ttk.Frame):
             ttk.Label(stats_grid, text=k, width=5).grid(row=i, column=0, sticky="w", padx=2, pady=2)
             ttk.Label(stats_grid, textvariable=self.stat_vars[k]).grid(row=i, column=1, sticky="w", padx=2, pady=2)
 
-        # Tab 2: Sets Guardados
+
+        # --- Fin Tab 1 ---
+        
+        
+        # --- Tab 2: Sets Guardados ---
         tab_db = ttk.Frame(nb); nb.add(tab_db, text="Sets Guardados")
 
         top = ttk.Frame(tab_db); top.pack(fill="x", padx=8, pady=6)
@@ -246,6 +250,9 @@ class PokemonApp(ttk.Frame):
             ttk.Label(frame, text=k).pack(); ttk.Label(frame, textvariable=self.detail_stats[k]).pack()
 
         self.refresh_sets()
+        
+        # --- Fin Tab 2 ---
+        
         
         # --- Tab 3: Velocidad ---
         tab_speed = ttk.Frame(nb)
@@ -343,6 +350,9 @@ class PokemonApp(ttk.Frame):
         # Primer llenado
         self.refresh_speed_list()
         
+        # --- Fin Tab 3: Velocidad ---
+        
+        
         # --- Tab 4: Daños ---
         tab_damage = ttk.Frame(nb)
         nb.add(tab_damage, text="Daños")
@@ -350,6 +360,19 @@ class PokemonApp(ttk.Frame):
         # Controles superiores
         top = ttk.LabelFrame(tab_damage, text="Atacante y Parámetros")
         top.pack(fill="x", padx=8, pady=8)
+        
+        # (en el frame 'top' de Daños)
+        ttk.Label(top, text="Movimiento:").grid(row=0, column=6, sticky="w", padx=4, pady=4)
+        self.d_move_pick = tk.StringVar()
+        self.cmb_move_pick = ttk.Combobox(top, textvariable=self.d_move_pick, width=28, values=[])
+        self.cmb_move_pick.grid(row=0, column=7, sticky="w", padx=4, pady=4)
+        self.cmb_move_pick.bind("<<ComboboxSelected>>", lambda e: self.on_pick_move())
+        ttk.Button(top, text="Cargar mov.", command=self.on_pick_move).grid(row=0, column=8, padx=6)
+        
+        # Label para mostrar precisión
+        self.lbl_accuracy_var = tk.StringVar(value="—")
+        ttk.Label(top, text="Acc:").grid(row=1, column=6, sticky="e", padx=4, pady=4)
+        ttk.Label(top, textvariable=self.lbl_accuracy_var, width=6).grid(row=1, column=7, sticky="w", padx=4, pady=4)
 
         # Atacante
         ttk.Label(top, text="Atacante:").grid(row=0, column=0, sticky="w", padx=4, pady=4)
@@ -357,6 +380,7 @@ class PokemonApp(ttk.Frame):
         self.d_attacker_map = {}  # label -> set_id
         self.d_attacker_combo = ttk.Combobox(top, textvariable=self.d_attacker, width=40, values=[])
         self.d_attacker_combo.grid(row=0, column=1, columnspan=3, sticky="w", padx=4, pady=4)
+        self.d_attacker_combo.bind("<<ComboboxSelected>>", lambda e: self._reload_moves_for_selected_attacker())
         ttk.Button(top, text="Cargar atacantes", command=self._reload_attackers).grid(row=0, column=4, padx=6)
 
         # Parámetros de movimiento
@@ -369,9 +393,6 @@ class PokemonApp(ttk.Frame):
         ttk.Entry(top, textvariable=self.d_power, width=8).grid(row=1, column=3, sticky="w", padx=4, pady=4)
 
         # Modificadores
-        self.d_stab = tk.BooleanVar(value=True)
-        ttk.Checkbutton(top, text="STAB (x1.5)", variable=self.d_stab).grid(row=2, column=0, padx=4, pady=4, sticky="w")
-
         self.d_crit = tk.BooleanVar(value=False)
         ttk.Checkbutton(top, text="Crítico (x1.5)", variable=self.d_crit).grid(row=2, column=1, padx=4, pady=4, sticky="w")
 
@@ -384,14 +405,64 @@ class PokemonApp(ttk.Frame):
         self.d_auto_stab = tk.BooleanVar(value=True)
         ttk.Checkbutton(top, text="STAB automático", variable=self.d_auto_stab).grid(row=2, column=0, padx=4, pady=4, sticky="w")
 
-        self.d_stab = tk.BooleanVar(value=True)
-        ttk.Checkbutton(top, text="STAB forzar", variable=self.d_stab).grid(row=2, column=1, padx=4, pady=4, sticky="w")  # se usa si auto_stab=False
-
+        self.d_stab_force = tk.BooleanVar(value=True)
+        ttk.Checkbutton(top, text="STAB forzar", variable=self.d_stab_force).grid(row=2, column=2, padx=4, pady=4, sticky="w")
+        
         ttk.Label(top, text="Objeto:").grid(row=2, column=4, sticky="w", padx=4, pady=4)
         self.d_item = tk.StringVar(value="None")
         ttk.Combobox(top, textvariable=self.d_item, width=22, values=["None","Choice Band/Specs (x1.5)","Life Orb (x1.3)"]).grid(row=2, column=5, sticky="w", padx=4, pady=4)
 
         ttk.Button(top, text="Calcular", command=self.refresh_damage_list).grid(row=2, column=6, padx=8, pady=4)
+
+        # --- Tera ofensivo/defensivo ---
+        tera_frame = ttk.LabelFrame(tab_damage, text="Tera / Campo")
+        tera_frame.pack(fill="x", padx=8, pady=(0,8))
+
+        # Attacker Tera
+        self.d_tera_off_on = tk.BooleanVar(value=False)
+        ttk.Checkbutton(tera_frame, text="Atacante Tera ON", variable=self.d_tera_off_on).grid(row=0, column=0, padx=6, pady=6, sticky="w")
+        ttk.Label(tera_frame, text="Tera tipo (Atacante):").grid(row=0, column=1, sticky="w")
+        self.d_tera_off_type = tk.StringVar(value="Normal")
+        ttk.Combobox(tera_frame, textvariable=self.d_tera_off_type, width=14, values=ALL_TYPES).grid(row=0, column=2, padx=4)
+
+        # Defender Tera
+        self.d_tera_def_on = tk.BooleanVar(value=False)
+        ttk.Checkbutton(tera_frame, text="Defensor Tera ON", variable=self.d_tera_def_on).grid(row=0, column=3, padx=6, pady=6, sticky="w")
+        ttk.Label(tera_frame, text="Tera tipo (Defensor):").grid(row=0, column=4, sticky="w")
+        self.d_tera_def_type = tk.StringVar(value="Normal")
+        ttk.Combobox(tera_frame, textvariable=self.d_tera_def_type, width=14, values=ALL_TYPES).grid(row=0, column=5, padx=4)
+
+        # Weather + Pantallas / Formato
+        ttk.Label(tera_frame, text="Clima:").grid(row=1, column=0, sticky="w", padx=6)
+        self.d_weather = tk.StringVar(value="Ninguno")
+        ttk.Combobox(tera_frame, textvariable=self.d_weather, width=14,
+                    values=["Ninguno","Lluvia","Sol","Tormenta Arena","Nieve"]).grid(row=1, column=1, padx=4)
+
+        self.d_reflect = tk.BooleanVar(value=False)
+        ttk.Checkbutton(tera_frame, text="Reflect", variable=self.d_reflect).grid(row=1, column=2, padx=6, sticky="w")
+        self.d_lightscreen = tk.BooleanVar(value=False)
+        ttk.Checkbutton(tera_frame, text="Light Screen", variable=self.d_lightscreen).grid(row=1, column=3, padx=6, sticky="w")
+        self.d_veil = tk.BooleanVar(value=False)
+        ttk.Checkbutton(tera_frame, text="Aurora Veil", variable=self.d_veil).grid(row=1, column=4, padx=6, sticky="w")
+
+        ttk.Label(tera_frame, text="Formato:").grid(row=1, column=5, sticky="e")
+        self.d_format = tk.StringVar(value="Singles")
+        ttk.Combobox(tera_frame, textvariable=self.d_format, width=10, values=["Singles","Dobles"]).grid(row=1, column=6, padx=4)
+
+        # Ítems extra
+        items_frame = ttk.LabelFrame(tab_damage, text="Ítems extra")
+        items_frame.pack(fill="x", padx=8, pady=(0,8))
+
+        # Atacante (además del combo que ya tienes de Choice/Life Orb)
+        self.d_item_extra = tk.StringVar(value="Ninguno")
+        ttk.Label(items_frame, text="Atacante:").grid(row=0, column=0, sticky="w", padx=6)
+        ttk.Combobox(items_frame, textvariable=self.d_item_extra, width=20,
+                    values=["Ninguno","Expert Belt (x1.2 si superefectivo)","Muscle Band (Físico x1.1)","Wise Glasses (Especial x1.1)"]).grid(row=0, column=1, padx=4)
+
+        # Defensor
+        self.d_assault_vest = tk.BooleanVar(value=False)
+        ttk.Checkbutton(items_frame, text="Assault Vest (SpD x1.5)", variable=self.d_assault_vest).grid(row=0, column=2, padx=12, sticky="w")
+
 
         # Tabla de resultados
         cols = ("target","hp","def_used","xef","min","max","min_pct","max_pct","ohko")
@@ -416,6 +487,8 @@ class PokemonApp(ttk.Frame):
 
         # llenar atacantes de entrada
         self._reload_attackers()
+        
+        # Fin Tab 4: Daños ---
 
 
 
@@ -668,6 +741,8 @@ class PokemonApp(ttk.Frame):
                 messagebox.showerror("Error", str(e))
         ttk.Button(btns, text="Guardar cambios", command=on_save).pack(side="right", padx=6)
         ttk.Button(btns, text="Cancelar", command=editor.destroy).pack(side="right", padx=6)
+        
+    # Fin open_editor
 
     def on_select_row(self, event=None):
         sel = self.tree.selection()
@@ -713,6 +788,7 @@ class PokemonApp(ttk.Frame):
             messagebox.showinfo("Exportado", f"Archivo HTML generado en:\n{path}")
         except Exception as e:
             messagebox.showerror("Error", str(e))
+    # Fin export_html
 
     def refresh_sets(self):
         for i in self.tree.get_children(): self.tree.delete(i)
@@ -747,6 +823,9 @@ class PokemonApp(ttk.Frame):
         if last and str(last) in self.tree.get_children():
             try: self.tree.selection_set(str(last))
             except Exception: pass
+            
+    # Fin refresh_sets
+    
             
     def _safe_int(self, v):
         try: return int(str(v).strip())
@@ -853,6 +932,8 @@ class PokemonApp(ttk.Frame):
         for r in items:
             self.speed_tree.insert("", "end", values=(r["species"], r["nature"],r["base_stat"], r["iv"], r["ev"],r["calc"], r["speed"]))
             
+    # Fin refresh_speed_list
+    
     def _stage_multiplier(self, stage: int) -> float:
         """Multiplicador de etapas de Velocidad. -6..+6"""
         try:
@@ -883,6 +964,7 @@ class PokemonApp(ttk.Frame):
             presets = list_speed_presets(s)
         names = [p.name for p in presets]
         self.cmb_preset["values"] = names
+    # Fin _reload_presets_into_combo
 
     def on_save_preset(self):
         # pedir nombre
@@ -910,6 +992,7 @@ class PokemonApp(ttk.Frame):
             messagebox.showinfo("Preset", f"Preset '{name}' guardado.")
         except Exception as e:
             messagebox.showerror("Error", str(e))
+    # Fin on_save_preset
 
     def on_load_preset(self):
         name = (self.s_preset.get() or "").strip()
@@ -932,6 +1015,7 @@ class PokemonApp(ttk.Frame):
             self.s_ability.set(sp.ability_label or "—")
         # recalcular
         self.refresh_speed_list()
+    # Fin on_load_preset
 
     def on_delete_preset(self):
         name = (self.s_preset.get() or "").strip()
@@ -951,18 +1035,68 @@ class PokemonApp(ttk.Frame):
             self._reload_presets_into_combo()
         else:
             messagebox.showwarning("Preset", f"Preset '{name}' no encontrado.")
+    # Fin on_delete_preset
             
     def _safe_int(self, v):
         try: return int(str(v).strip())
         except Exception: return None
+    #
 
-    def _dmg_modifier(self, *, stab: bool, crit: bool, eff_mult: float, item_mult: float):
-        mod = 1.0
-        if stab: mod *= 1.5
-        if crit: mod *= 1.5
-        mod *= eff_mult
-        mod *= item_mult
-        return mod
+    def _dmg_modifier(
+            self, *,
+            move_type: str,
+            attacker_types: list[str],
+            tera_off_on: bool,
+            tera_off_type: str,
+            eff_mult: float,
+            item_mult_choice: float,
+            category: str,  # "physical" | "special"
+            crit: bool, 
+            stab_override: bool | None = None
+        ) -> float:
+        """
+        Devuelve el multiplicador total de daño (post fórmula base), combinando:
+        - STAB (incluye reglas de Tera ofensivo)
+        - Efectividad por tipos (eff_mult)
+        - Choice/Life Orb (item_mult_choice)
+        - Expert Belt / Muscle Band / Wise Glasses (según categoría y si es SE)
+        - Clima que afecta el tipo de movimiento (Lluvia/Sol)
+        - Pantallas / Aurora Veil (Singles 0.5, Dobles ~0.67)
+        - Crítico (x1.5)
+        """
+        # STAB (automático con Tera, o forzado si viene override)
+        if stab_override is not None:
+            stab = 1.5 if stab_override else 1.0
+        else:
+            stab = self._tera_stab_multiplier(
+                move_type=move_type,
+                attacker_types=attacker_types,
+                tera_on=tera_off_on,
+                tera_type=tera_off_type,
+            )
+
+        # Ítems extra del atacante (Expert Belt / Band / Glasses)
+        extra_item_mult = self._attacker_extra_item_mult(category, eff_mult)
+
+        # Clima que afecta al tipo del movimiento (Lluvia/Sol)
+        weather_move_mult = self._weather_move_multiplier(move_type)
+
+        # Pantallas / Aurora Veil (según categoría + formato)
+        screens_mult = self._screen_multiplier(category)
+
+        # Crítico
+        crit_mult = 1.5 if crit else 1.0
+
+        return (
+            stab
+            * eff_mult
+            * item_mult_choice
+            * extra_item_mult
+            * weather_move_mult
+            * screens_mult
+            * crit_mult
+        )
+    # Fin _dmg_modifier
 
     def _choice_item_mult(self, item_label: str) -> float:
         if item_label == "Choice Band/Specs (x1.5)":
@@ -970,10 +1104,12 @@ class PokemonApp(ttk.Frame):
         if item_label == "Life Orb (x1.3)":
             return 1.3
         return 1.0
+    #
 
     def _eff_from_label(self, lbl: str) -> float:
         mapping = {"×0": 0.0, "×0.25": 0.25, "×0.5": 0.5, "×1": 1.0, "×2": 2.0, "×4": 4.0}
         return mapping.get(lbl, 1.0)
+    # Fin _eff_from_label
     
     def _reload_attackers(self):
         # Rellena el combo con "id - Species (Lvl/Nature)" -> id
@@ -991,6 +1127,40 @@ class PokemonApp(ttk.Frame):
         self.d_attacker_combo["values"] = lbls
         if lbls and not self.d_attacker.get():
             self.d_attacker.set(lbls[0])
+            self._reload_moves_for_selected_attacker()
+    # Fin _reload_attackers
+    
+    def _reload_moves_for_selected_attacker(self):
+        """Rellena el combo de movimientos según el atacante seleccionado."""
+        label = (self.d_attacker.get() or "").strip()
+        if not label or label not in self.d_attacker_map:
+            self.cmb_move_pick["values"] = []
+            self.d_move_pick.set("")
+            return
+        set_id = self.d_attacker_map[label]
+
+        from sqlalchemy.orm import Session
+        from ..db.base import engine
+        from ..db.models import PokemonSet
+        import json as _json
+
+        with Session(engine) as s:
+            pset = s.get(PokemonSet, set_id)
+            if not pset:
+                self.cmb_move_pick["values"] = []
+                self.d_move_pick.set("")
+                return
+            try:
+                mv = _json.loads(pset.moves_json) or []
+            except Exception:
+                mv = []
+            # limpia y setea
+            self.cmb_move_pick["values"] = mv
+            if mv:
+                self.d_move_pick.set(mv[0])
+            else:
+                self.d_move_pick.set("")
+
 
     def on_sort_damage(self, col: str):
         if self.dmg_sort_by == col:
@@ -999,6 +1169,7 @@ class PokemonApp(ttk.Frame):
             self.dmg_sort_by = col
             self.dmg_sort_dir = "desc" if col in ("max","max_pct","xef") else "asc"
         self.refresh_damage_list()
+    # Fin on_sort_damage
 
     def refresh_damage_list(self):
         # limpiar tabla
@@ -1049,16 +1220,23 @@ class PokemonApp(ttk.Frame):
             att_stats = compute_stats(A_tmp, base_stats=att_base, ivs=att_ivs)
             atk_stat = att_stats["Atk"] if cat == "physical" else att_stats["SpA"]
 
-            # 2) Tipo de movimiento + STAB
-            move_type = self.d_move_type.get()
+
+            # Tipos del atacante y STAB (con Tera ofensivo)
             try:
-                att_types = self.get_species_types(att_sp.name, attacker.gender)  # usa att_sp YA definido
+                att_types = self.get_species_types(att_sp.name, attacker.gender)
             except Exception:
                 att_types = []
-            if bool(self.d_auto_stab.get()):
-                stab = (move_type in att_types)
-            else:
-                stab = bool(self.d_stab.get())
+
+            stab = self._tera_stab_multiplier(
+                move_type=move_type,
+                attacker_types=att_types,
+                tera_on=bool(self.d_tera_off_on.get()),
+                tera_type=self.d_tera_off_type.get()
+            )
+
+            stab_override = None
+            if not self.d_auto_stab.get():
+                stab_override = bool(self.d_stab_force.get())
 
             # 3) Defensores
             rows = _list_sets(s, limit=None)
@@ -1073,9 +1251,16 @@ class PokemonApp(ttk.Frame):
                     def_types = self.get_species_types(sp.name, pset.gender)  # ej ['Steel','Flying']
                 except Exception:
                     def_types = []
+                    
+                # Tera defensivo: monotipo del Tera elegido
+                if bool(self.d_tera_def_on.get()):
+                    def_types = [self.d_tera_def_type.get()]
+                    
+                # Efectividad del movimiento
                 eff_mult = type_effectiveness(move_type, def_types)
                 xef_txt = f"×{eff_mult:g}"  # muestra “×2”, “×0.5”, etc.
 
+                # Cargar stats del defensor
                 D_evs = _json.loads(pset.evs_json)
                 D_ivs = _json.loads(pset.ivs_json)
                 D_base = {
@@ -1086,18 +1271,32 @@ class PokemonApp(ttk.Frame):
                 d_stats = compute_stats(D_tmp, base_stats=D_base, ivs=D_ivs)
                 def_stat = d_stats["Def"] if cat == "physical" else d_stats["SpD"]
                 hp_stat = d_stats["HP"]
-
-                L = attacker.level
-                base_damage = (((2 * L / 5) + 2) * power * atk_stat / max(1, def_stat)) / 50 + 2
-
-                # Objeto ya lo tienes como item_mult; crítico viene de self.d_crit
-                mod = self._dmg_modifier(
-                    stab=stab,
-                    crit=bool(self.d_crit.get()),
-                    eff_mult=eff_mult,
-                    item_mult=item_mult
-                )
                 
+                # Boosts de clima sobre la defensa del defensor
+                def_types_uc = [t.capitalize() for t in def_types]
+                def_boost = self._defender_stat_weather_boost(def_types_uc, cat)
+                def_stat_eff = int(def_stat * def_boost)
+
+                # Assault Vest sobre SpD del defensor
+                if category := cat:
+                    if category == "special" and self.d_assault_vest.get():
+                        def_stat_eff = int(def_stat_eff * 1.5)
+                
+                L = attacker.level
+                base_damage = (((2 * L / 5) + 2) * power * atk_stat / max(1, def_stat_eff)) / 50 + 2
+
+                mod = self._dmg_modifier(
+                        move_type=move_type,
+                        attacker_types=att_types,
+                        tera_off_on=bool(self.d_tera_off_on.get()),
+                        tera_off_type=self.d_tera_off_type.get(),
+                        eff_mult=eff_mult,
+                        item_mult_choice=item_mult,   # Choice/Life Orb del combo existente
+                        category=cat,                 # "physical" | "special"
+                        crit=bool(self.d_crit.get()),
+                        stab_override=stab_override,
+                    )
+
 
                 dmin = int(base_damage * 0.85 * mod)
                 dmax = int(base_damage * 1.00 * mod)
@@ -1119,6 +1318,7 @@ class PokemonApp(ttk.Frame):
                     "ohko": ohko,
                 })
             # Fin bucle defensores
+        # Fin traer defensores
 
 
         # ordenar
@@ -1146,6 +1346,125 @@ class PokemonApp(ttk.Frame):
             return []
         
     # Fin get_species_types
+    
+    def _screen_multiplier(self, category: str) -> float:
+        """Reflect/Light Screen/Aurora Veil. Singles: 0.5; Dobles: 2/3."""
+        singles = (self.d_format.get() != "Dobles")
+        base_half = 0.5 if singles else (2/3)  # ~0.67 en dobles
+        mult = 1.0
+        if self.d_veil.get():
+            mult *= base_half
+        if category == "physical" and self.d_reflect.get():
+            mult *= base_half
+        if category == "special" and self.d_lightscreen.get():
+            mult *= base_half
+        return mult
+    
+    # Fin _screen_multiplier
+
+    def _weather_move_multiplier(self, move_type: str) -> float:
+        w = self.d_weather.get()
+        t = (move_type or "").capitalize()
+        if w == "Lluvia":
+            if t == "Water": return 1.5
+            if t == "Fire":  return 0.5
+        if w == "Sol":
+            if t == "Fire":  return 1.5
+            if t == "Water": return 0.5
+        # Tormenta Arena: SpD x1.5 a Rock (lo aplico abajo en defensor)
+        # Nieve: Def x1.5 a Ice (también abajo)
+        return 1.0
+    # Fin _weather_move_multiplier
+
+    def _defender_stat_weather_boost(self, sp_primary_type: list[str], category: str) -> float:
+        """Multiplica la defensa usada por clima según reglas simples Gen9."""
+        w = self.d_weather.get()
+        types = [t.capitalize() for t in sp_primary_type or []]
+        if w == "Tormenta Arena" and category == "special" and "Rock" in types:
+            return 1.5  # Rock SpD x1.5
+        if w == "Nieve" and category == "physical" and "Ice" in types:
+            return 1.5  # Ice Def x1.5
+        return 1.0
+    # Fin _defender_stat_weather_boost
+
+    def _attacker_extra_item_mult(self, category: str, eff_mult: float) -> float:
+        label = self.d_item_extra.get()
+        if label.startswith("Expert Belt") and eff_mult > 1.0:
+            return 1.2
+        if label.startswith("Muscle Band") and category == "physical":
+            return 1.1
+        if label.startswith("Wise Glasses") and category == "special":
+            return 1.1
+        return 1.0
+    # Fin _attacker_extra_item_mult
+
+    def _tera_stab_multiplier(self,*, move_type: str, attacker_types: list[str], tera_on: bool, tera_type: str) -> float:
+        """
+        Regla simplificada/precisa:
+        - Si Tera OFF: STAB 1.5 si el move_type está en attacker_types.
+        - Si Tera ON:
+            * Si move_type == tera_type y también estaba en attacker_types -> 2.0
+            * Si move_type == tera_type pero NO estaba -> 1.5
+            * Si move_type != tera_type pero estaba en attacker_types -> 1.5
+            * Si no coincide nada -> 1.0
+        """
+        mt = (move_type or "").capitalize()
+        atts = [t.capitalize() for t in (attacker_types or [])]
+        tt = (tera_type or "").capitalize()
+
+        if not tera_on:
+            return 1.5 if mt in atts else 1.0
+
+        if mt == tt and mt in atts:
+            return 2.0
+        if mt == tt and mt not in atts:
+            return 1.5
+        if mt != tt and mt in atts:
+            return 1.5
+        return 1.0
+    # Fin _tera_stab_multiplier
+    
+    def on_pick_move(self):
+        move = (self.d_move_pick.get() or "").strip()
+        if not move:
+            messagebox.showinfo("Movimientos", "Selecciona un movimiento del listado.")
+            if hasattr(self, "lbl_accuracy_var"):
+                self.lbl_accuracy_var.set("—")
+            return
+
+        # Cache local
+        types_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+        os.makedirs(types_path, exist_ok=True)
+        move_cache = os.path.join(types_path, "moves_cache.json")
+
+        try:
+            from ..services.move_provider import ensure_move_in_json
+            info = ensure_move_in_json(move, move_cache)
+        except Exception as e:
+            messagebox.showerror("PokéAPI", f"No pude obtener datos del movimiento.\n{e}")
+            if hasattr(self, "lbl_accuracy_var"):
+                self.lbl_accuracy_var.set("—")
+            return
+
+        # Autocompletar tipo / poder / categoría
+        if info.get("type"):
+            self.d_move_type.set(info["type"].capitalize())
+        if info.get("power") is not None:
+            self.d_power.set(str(info["power"]))
+
+        dmgc = (info.get("damage_class") or "").lower()
+        if dmgc in ("physical", "special"):
+            self.d_category.set("Physical" if dmgc == "physical" else "Special")
+
+        # Mostrar precisión
+        if hasattr(self, "lbl_accuracy_var"):
+            if info.get("accuracy") is not None:
+                self.lbl_accuracy_var.set(f"{info['accuracy']}%")
+            else:
+                self.lbl_accuracy_var.set("—")
+    # Fin on_pick_move
+
+
 
     
     

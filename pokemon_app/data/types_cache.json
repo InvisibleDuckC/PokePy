@@ -66,5 +66,66 @@
   "Ninetales-Alola": [
     "Ice",
     "Fairy"
+  ],
+  "Dragapult": [
+    "Dragon",
+    "Ghost"
+  ],
+  "Hydreigon": [
+    "Dark",
+    "Dragon"
+  ],
+  "Incineroar": [
+    "Fire",
+    "Dark"
+  ],
+  "Pelipper": [
+    "Water",
+    "Flying"
+  ],
+  "Archaludon": [
+    "Steel",
+    "Dragon"
+  ],
+  "Sinistcha": [
+    "Grass",
+    "Ghost"
+  ],
+  "Ursaluna": [
+    "Ground",
+    "Normal"
+  ],
+  "Grimmsnarl": [
+    "Dark",
+    "Fairy"
+  ],
+  "Annihilape": [
+    "Fighting",
+    "Ghost"
+  ],
+  "Porygon2": [
+    "Normal"
+  ],
+  "Gholdengo": [
+    "Steel",
+    "Ghost"
+  ],
+  "Amoonguss": [
+    "Grass",
+    "Poison"
+  ],
+  "Gothitelle": [
+    "Psychic"
+  ],
+  "Politoed": [
+    "Water"
+  ],
+  "Kingdra": [
+    "Water",
+    "Dragon"
+  ],
+  "Delphox": [
+    "Fire",
+    "Psychic"
   ]
 }

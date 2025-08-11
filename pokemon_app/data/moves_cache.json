@@ -1,0 +1,79 @@
+{
+  "Tera Blast": {
+    "name": "Tera Blast",
+    "type": "Normal",
+    "power": 80,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Hyper Voice": {
+    "name": "Hyper Voice",
+    "type": "Normal",
+    "power": 90,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Giga Drain": {
+    "name": "Giga Drain",
+    "type": "Grass",
+    "power": 75,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Heat Wave": {
+    "name": "Heat Wave",
+    "type": "Fire",
+    "power": 95,
+    "damage_class": "special",
+    "accuracy": 90
+  },
+  "Iron Head": {
+    "name": "Iron Head",
+    "type": "Steel",
+    "power": 80,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Earthquake": {
+    "name": "Earthquake",
+    "type": "Ground",
+    "power": 100,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Phantom Force": {
+    "name": "Phantom Force",
+    "type": "Ghost",
+    "power": 90,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Knock Off": {
+    "name": "Knock Off",
+    "type": "Dark",
+    "power": 65,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Flare Blitz": {
+    "name": "Flare Blitz",
+    "type": "Fire",
+    "power": 120,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Hurricane": {
+    "name": "Hurricane",
+    "type": "Flying",
+    "power": 110,
+    "damage_class": "special",
+    "accuracy": 70
+  },
+  "Electro Shot": {
+    "name": "Electro Shot",
+    "type": "Electric",
+    "power": 130,
+    "damage_class": "special",
+    "accuracy": 100
+  }
+}

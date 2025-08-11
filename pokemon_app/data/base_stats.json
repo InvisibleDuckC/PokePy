@@ -142,5 +142,133 @@
     "SpA": 110,
     "SpD": 130,
     "Spe": 60
+  },
+  "Delphox": {
+    "HP": 75,
+    "Atk": 69,
+    "Def": 72,
+    "SpA": 114,
+    "SpD": 100,
+    "Spe": 104
+  },
+  "Archaludon": {
+    "HP": 90,
+    "Atk": 105,
+    "Def": 130,
+    "SpA": 125,
+    "SpD": 65,
+    "Spe": 85
+  },
+  "Kingdra": {
+    "HP": 75,
+    "Atk": 95,
+    "Def": 95,
+    "SpA": 95,
+    "SpD": 95,
+    "Spe": 85
+  },
+  "Politoed": {
+    "HP": 90,
+    "Atk": 75,
+    "Def": 75,
+    "SpA": 90,
+    "SpD": 100,
+    "Spe": 70
+  },
+  "Incineroar": {
+    "HP": 95,
+    "Atk": 115,
+    "Def": 90,
+    "SpA": 80,
+    "SpD": 90,
+    "Spe": 60
+  },
+  "Gothitelle": {
+    "HP": 70,
+    "Atk": 55,
+    "Def": 95,
+    "SpA": 95,
+    "SpD": 110,
+    "Spe": 65
+  },
+  "Amoonguss": {
+    "HP": 114,
+    "Atk": 85,
+    "Def": 70,
+    "SpA": 85,
+    "SpD": 80,
+    "Spe": 30
+  },
+  "Gholdengo": {
+    "HP": 87,
+    "Atk": 60,
+    "Def": 95,
+    "SpA": 133,
+    "SpD": 91,
+    "Spe": 84
+  },
+  "Porygon2": {
+    "HP": 85,
+    "Atk": 80,
+    "Def": 90,
+    "SpA": 105,
+    "SpD": 95,
+    "Spe": 60
+  },
+  "Annihilape": {
+    "HP": 110,
+    "Atk": 115,
+    "Def": 80,
+    "SpA": 50,
+    "SpD": 90,
+    "Spe": 90
+  },
+  "Grimmsnarl": {
+    "HP": 95,
+    "Atk": 120,
+    "Def": 65,
+    "SpA": 95,
+    "SpD": 75,
+    "Spe": 60
+  },
+  "Ursaluna": {
+    "HP": 130,
+    "Atk": 140,
+    "Def": 105,
+    "SpA": 45,
+    "SpD": 80,
+    "Spe": 50
+  },
+  "Sinistcha": {
+    "HP": 71,
+    "Atk": 60,
+    "Def": 106,
+    "SpA": 121,
+    "SpD": 80,
+    "Spe": 70
+  },
+  "Pelipper": {
+    "HP": 60,
+    "Atk": 50,
+    "Def": 100,
+    "SpA": 95,
+    "SpD": 70,
+    "Spe": 65
+  },
+  "Hydreigon": {
+    "HP": 92,
+    "Atk": 105,
+    "Def": 90,
+    "SpA": 125,
+    "SpD": 90,
+    "Spe": 98
+  },
+  "Dragapult": {
+    "HP": 88,
+    "Atk": 120,
+    "Def": 75,
+    "SpA": 100,
+    "SpD": 75,
+    "Spe": 142
   }
 }
