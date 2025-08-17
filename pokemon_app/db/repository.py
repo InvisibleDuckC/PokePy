@@ -42,10 +42,14 @@ def save_pokemon_set(
     moves: list[str],
     base_stats_registry: Dict[str, Dict[str, int]],
     raw_text: str | None = None,
-) -> tuple[Species, PokemonSet]:
+) -> int:
+    # Asegura/actualiza especie (fuera de la sesión para obtener el objeto base)
     sp = upsert_species(name, base_stats_registry[name])
+
+    # Guarda el set dentro de la sesión y devuelve el ID primitivo
     with session_scope() as s:
-        sp = s.merge(sp)
+        sp = s.merge(sp)  # adjunta a la sesión actual
+
         pset = PokemonSet(
             species_id=sp.id,
             gender=gender,
@@ -60,8 +64,14 @@ def save_pokemon_set(
             raw_text=raw_text,
         )
         s.add(pset)
-        s.flush()
-        return sp, pset
+        s.flush()            # asegura que el ID se asigne por el motor
+        new_id = pset.id     # léelo ANTES de cerrar la sesión
+
+        # session_scope() normalmente hace commit al salir
+        # si el tuyo no, podrías añadir: s.commit()
+
+    return new_id
+
 
 def list_sets(
     session: Session,

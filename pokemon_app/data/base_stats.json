@@ -270,5 +270,77 @@
     "SpA": 100,
     "SpD": 75,
     "Spe": 142
+  },
+  "Ursaluna-Bloodmoon": {
+    "HP": 113,
+    "Atk": 70,
+    "Def": 120,
+    "SpA": 135,
+    "SpD": 65,
+    "Spe": 52
+  },
+  "Baxcalibur": {
+    "HP": 115,
+    "Atk": 145,
+    "Def": 92,
+    "SpA": 75,
+    "SpD": 86,
+    "Spe": 87
+  },
+  "Tsareena": {
+    "HP": 72,
+    "Atk": 120,
+    "Def": 98,
+    "SpA": 50,
+    "SpD": 98,
+    "Spe": 72
+  },
+  "Meowscarada": {
+    "HP": 76,
+    "Atk": 110,
+    "Def": 70,
+    "SpA": 81,
+    "SpD": 70,
+    "Spe": 123
+  },
+  "Salamence": {
+    "HP": 95,
+    "Atk": 135,
+    "Def": 80,
+    "SpA": 110,
+    "SpD": 80,
+    "Spe": 100
+  },
+  "Lycanroc-Midday": {
+    "HP": 75,
+    "Atk": 115,
+    "Def": 65,
+    "SpA": 55,
+    "SpD": 65,
+    "Spe": 112
+  },
+  "Lycanroc-Dusk": {
+    "HP": 75,
+    "Atk": 117,
+    "Def": 65,
+    "SpA": 55,
+    "SpD": 65,
+    "Spe": 110
+  },
+  "Lycanroc-Midnight": {
+    "HP": 85,
+    "Atk": 115,
+    "Def": 75,
+    "SpA": 55,
+    "SpD": 75,
+    "Spe": 82
+  },
+  "Basculegion-Male": {
+    "HP": 120,
+    "Atk": 112,
+    "Def": 65,
+    "SpA": 80,
+    "SpD": 75,
+    "Spe": 78
   }
 }

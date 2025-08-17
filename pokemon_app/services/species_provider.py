@@ -30,6 +30,13 @@ NAME_ONLY_CASES = {
 
     # Otros frecuentes
     "mimikyu-busted": "mimikyu-busted",
+    
+    # Lycanroc sin forma explícita → usar Midday por defecto
+    "lycanroc": "lycanroc-midday",
+}
+
+NAME_GENDER_CASES = {
+    "basculegion": {"male": "basculegion-male", "female": "basculegion-female"},
 }
 
 def _ascii_slug(s: str) -> str:
@@ -51,6 +58,17 @@ def showdown_to_pokeapi_slug(name: str, gender: Optional[str]) -> str:
     # casos solo por nombre
     if slug in NAME_ONLY_CASES:
         return NAME_ONLY_CASES[slug]
+    return slug
+    # NUEVO: casos por género
+    if slug in NAME_GENDER_CASES:
+        g = (gender or "").strip().lower()
+        if g in ("f", "female", "hembra", "♀"):
+            return NAME_GENDER_CASES[slug].get("female", slug)
+        # por defecto, male
+        return NAME_GENDER_CASES[slug].get("male", slug)
+
+    # Casos por nombre solamente
+    slug = NAME_ONLY_CASES.get(slug, slug)
     return slug
 
 def fetch_base_stats_from_api(slug: str) -> Dict[str, int]:

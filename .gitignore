@@ -3,6 +3,7 @@ pokemon_app/__pycache__/
 pokemon_app/migrations/
 pokemon_app/services/__pycache__/
 pokemon_app/gui/__pycache__/
+pokemon_app/gui/tabs/__pycache__/
 pokemon_app/controllers/__pycache__/
 pokemon_app/db/__pycache__
 pokemon_app/utils/__pycache__

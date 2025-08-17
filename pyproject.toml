@@ -1,0 +1,13 @@
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.ruff]
+line-length = 100
+lint.select = ["E","F","I","UP","B","N","S","W","C4","DJ","ASYNC","DTZ","FBT","SIM","TID","TCH","Q"]
+lint.ignore = ["E203","E266","E501","W503"]
+target-version = "py312"

@@ -127,5 +127,33 @@
   "Delphox": [
     "Fire",
     "Psychic"
+  ],
+  "Ursaluna-Bloodmoon": [
+    "Ground",
+    "Normal"
+  ],
+  "Baxcalibur": [
+    "Dragon",
+    "Ice"
+  ],
+  "Meowscarada": [
+    "Grass",
+    "Dark"
+  ],
+  "Tsareena": [
+    "Grass"
+  ],
+  "Salamence": [
+    "Dragon",
+    "Flying"
+  ],
+  "Lycanroc-Midday": [
+    "Rock"
+  ],
+  "Lycanroc-Midnight": [
+    "Rock"
+  ],
+  "Lycanroc-Dusk": [
+    "Rock"
   ]
 }

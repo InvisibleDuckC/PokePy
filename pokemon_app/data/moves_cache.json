@@ -75,5 +75,103 @@
     "power": 130,
     "damage_class": "special",
     "accuracy": 100
+  },
+  "Earth Power": {
+    "name": "Earth Power",
+    "type": "Ground",
+    "power": 90,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Blood Moon": {
+    "name": "Blood Moon",
+    "type": "Normal",
+    "power": 140,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Icicle Crash": {
+    "name": "Icicle Crash",
+    "type": "Ice",
+    "power": 85,
+    "damage_class": "physical",
+    "accuracy": 90
+  },
+  "Glaive Rush": {
+    "name": "Glaive Rush",
+    "type": "Dragon",
+    "power": 120,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Headlong Rush": {
+    "name": "Headlong Rush",
+    "type": "Ground",
+    "power": 120,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Dark Pulse": {
+    "name": "Dark Pulse",
+    "type": "Dark",
+    "power": 80,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Draco Meteor": {
+    "name": "Draco Meteor",
+    "type": "Dragon",
+    "power": 130,
+    "damage_class": "special",
+    "accuracy": 90
+  },
+  "Sucker Punch": {
+    "name": "Sucker Punch",
+    "type": "Dark",
+    "power": 70,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Flower Trick": {
+    "name": "Flower Trick",
+    "type": "Grass",
+    "power": 70,
+    "damage_class": "physical",
+    "accuracy": null
+  },
+  "Play Rough": {
+    "name": "Play Rough",
+    "type": "Fairy",
+    "power": 90,
+    "damage_class": "physical",
+    "accuracy": 90
+  },
+  "Rock Slide": {
+    "name": "Rock Slide",
+    "type": "Rock",
+    "power": 75,
+    "damage_class": "physical",
+    "accuracy": 90
+  },
+  "Accelerock": {
+    "name": "Accelerock",
+    "type": "Rock",
+    "power": 40,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Power Whip": {
+    "name": "Power Whip",
+    "type": "Grass",
+    "power": 120,
+    "damage_class": "physical",
+    "accuracy": 85
+  },
+  "Brave Bird": {
+    "name": "Brave Bird",
+    "type": "Flying",
+    "power": 120,
+    "damage_class": "physical",
+    "accuracy": 100
   }
 }
