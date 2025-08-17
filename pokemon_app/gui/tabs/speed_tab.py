@@ -58,20 +58,22 @@ class SpeedTab:
             .grid(row=0, column=8)
 
         # Tabla
-        cols = ("species","item","nature","base_stat","iv","ev","calc","speed_item","speed")
+        cols = ("pin","species","item","nature","base_stat","iv","ev","calc","speed_item","speed")
         self.speed_tree = ttk.Treeview(self.master, columns=cols, show="headings", selectmode="browse", height=16)
         self.speed_tree.pack(fill="both", expand=True, padx=8, pady=(0,8))
 
-        self.speed_tree.column("species",  width=160, anchor="w")
-        self.speed_tree.column("item",      width=150, anchor="w") 
-        self.speed_tree.column("nature",   width=90,  anchor="w")
-        self.speed_tree.column("base_stat",width=90,  anchor="e")
-        self.speed_tree.column("iv",       width=70,  anchor="center")
-        self.speed_tree.column("ev",       width=70,  anchor="center")
-        self.speed_tree.column("calc",     width=100, anchor="e")
-        self.speed_tree.column("speed_item", width=110, anchor="e")
-        self.speed_tree.column("speed",    width=90,  anchor="e")
-
+        self.speed_tree.column("pin",       width=36,  anchor="center") 
+        self.speed_tree.column("species",  width=150, anchor="w")
+        self.speed_tree.column("item",      width=130, anchor="w") 
+        self.speed_tree.column("nature",   width=80,  anchor="w")
+        self.speed_tree.column("base_stat",width=70,  anchor="e")
+        self.speed_tree.column("iv",       width=50,  anchor="center")
+        self.speed_tree.column("ev",       width=50,  anchor="center")
+        self.speed_tree.column("calc",     width=80, anchor="e")
+        self.speed_tree.column("speed_item", width=80, anchor="e")
+        self.speed_tree.column("speed",    width=80,  anchor="e")
+        
+        self.speed_tree.heading("pin",        text="Fijar")
         self.speed_tree.heading("species",   text="Especie",       command=lambda c="species": self.on_sort_speed(c))
         self.speed_tree.heading("item",      text="Ítem",         command=lambda c="item":      self.on_sort_speed(c))
         self.speed_tree.heading("nature",    text="Naturaleza",    command=lambda c="nature":  self.on_sort_speed(c))
@@ -81,6 +83,13 @@ class SpeedTab:
         self.speed_tree.heading("calc",      text="Vel (Base)",    command=lambda c="calc":    self.on_sort_speed(c))
         self.speed_tree.heading("speed_item", text="Vel (Item)",  command=lambda c="speed_item": self.on_sort_speed(c))
         self.speed_tree.heading("speed",     text="Vel (Final)",   command=lambda c="speed":   self.on_sort_speed(c))
+
+        # Estado para pines + cache de filas fijadas
+        self.pinned_ids   = getattr(self, "pinned_ids", set())
+        self.pinned_cache = getattr(self, "pinned_cache", {})
+
+        # Click en la celda: alterna pin si hacen click en la primera columna
+        self.speed_tree.bind("<Button-1>", self.on_speed_click)
 
         # Modificadores
         frm_mod = ttk.LabelFrame(self.master, text="Modificadores")
@@ -178,19 +187,27 @@ class SpeedTab:
         items = []
         for pset, sp in rows:
             import json as _json
-            evs = _json.loads(pset.evs_json) or {}
-            ivs = _json.loads(pset.ivs_json) or {}
+
+            # Carga segura EVs/IVs
+            def _load_json(s):
+                try:
+                    return _json.loads(s) if s else {}
+                except Exception:
+                    return {}
+            evs = _load_json(getattr(pset, "evs_json", None))
+            ivs = _load_json(getattr(pset, "ivs_json", None))
+
             base_stats = {
                 "HP": sp.base_hp, "Atk": sp.base_atk, "Def": sp.base_def,
                 "SpA": sp.base_spa, "SpD": sp.base_spd, "Spe": sp.base_spe
             }
-            
+
             # Nivel seguro (fallback 50)
             try:
                 level = int(pset.level) if pset.level is not None else 50
             except Exception:
                 level = 50
-            
+
             # Cálculo de stats protegido
             try:
                 tmp = type("Tmp", (), {"evs": evs, "level": level, "nature": pset.nature})
@@ -198,6 +215,12 @@ class SpeedTab:
             except Exception as e:
                 messagebox.showerror("Cálculo de velocidad", str(e))
                 continue
+
+            # Identificador estable de la fila
+            rec_id = str(getattr(pset, "id", f"{sp.name}-{pset.level}-{pset.nature}-{pset.item}"))
+
+            # Icono del pin por fila
+            pin_icon = "📌" if rec_id in self.pinned_ids else "○"
 
             base_stat_spe = int(sp.base_spe)
             calc_spe = int(stats["Spe"])
@@ -214,17 +237,20 @@ class SpeedTab:
             climate_labels = {'Swift Swim (Lluvia)', 'Chlorophyll (Sol)', 'Sand Rush (Tormenta Arena)', 'Slush Rush (Nieve)'}
             ability_effective = 1.0 if (self.s_ability.get() in climate_labels) else ability_mult
 
-            speed_item = int(calc_spe * item_mult)
+            # Vel (Item): ítem + clima por fila  ← (ajuste #2)
+            speed_item = int(calc_spe * item_mult * climate_mult)
 
-            # Vel final (condicional clima por fila)
+            # Vel (Final): incluye ítem (no hay scarf_mult)
             eff_speed = int(
                 calc_spe * stage_mult * tailwind_mult * para_mult
                 * ability_effective * climate_mult * item_mult
             )
 
             items.append({
-                "species": normalize_species_name(sp.name, getattr(pset, "ability",None),getattr(pset, "gender", None),),
-                "item": (pset.item or "—"), 
+                "id": rec_id,
+                "pin": pin_icon,
+                "species": normalize_species_name(sp.name, getattr(pset, "ability", None), getattr(pset, "gender", None)),
+                "item": (pset.item or "—"),
                 "nature": pset.nature or "—",
                 "base_stat": base_stat_spe,
                 "iv": int(ivs.get("Spe", 31)),
@@ -234,6 +260,10 @@ class SpeedTab:
                 "speed": eff_speed,
             })
 
+            # Actualiza cache si está fijado (para sobrevivir a filtros SQL)
+            if rec_id in self.pinned_ids:
+                self.pinned_cache[rec_id] = items[-1]
+
         # Filtro min/max (Python)
         vmin = self._safe_int(self.s_speed_min.get())
         vmax = self._safe_int(self.s_speed_max.get())
@@ -242,17 +272,25 @@ class SpeedTab:
         if vmax is not None:
             items = [r for r in items if r["speed"] <= vmax]
 
+        # Unir fijados que fueron filtrados por SQL
+        present = {r["id"] for r in items}
+        for pid in list(self.pinned_ids):
+            if pid not in present and pid in self.pinned_cache:
+                items.append(self.pinned_cache[pid])
+
         # Orden
         key = self.speed_sort_by
         reverse = (self.speed_sort_dir == "desc")
         items.sort(key=lambda r: (r[key] if r[key] is not None else -999999), reverse=reverse)
 
-        # Pintar
+        # Pintar  ← (ajuste #1: usar iid estable)
         for r in items:
             self.speed_tree.insert(
                 "", "end",
-                values=(r["species"], r["item"], r["nature"], r["base_stat"], r["iv"], r["ev"], r["calc"], r.get("speed_item"), r["speed"])
+                iid=r["id"],
+                values=(r["pin"], r["species"], r["item"], r["nature"], r["base_stat"], r["iv"], r["ev"], r["calc"], r.get("speed_item"), r["speed"])
             )
+
 
     def _item_speed_mult(self, item_name: str, species_name: str) -> float:
         name = (item_name or "").strip().lower()
@@ -290,3 +328,25 @@ class SpeedTab:
         if target and ab == target:
             return 2.0
         return 1.0
+    
+    def on_speed_click(self, event):
+        tree = self.speed_tree
+        region = tree.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+        col = tree.identify_column(event.x)  # "#1" = primera columna
+        if col != "#1":
+            return
+        row = tree.identify_row(event.y)
+        if not row:
+            return
+
+        rec_id = row  # usamos iid = id del set
+        if rec_id in self.pinned_ids:
+            self.pinned_ids.remove(rec_id)
+        else:
+            self.pinned_ids.add(rec_id)
+
+        # refresca para redibujar icono y reinsertar fijados aunque el filtro los excluya
+        self.refresh()
+
