@@ -31,6 +31,7 @@ class InputTab(ttk.Frame):
         self.columnconfigure(0, weight=3)
         self.columnconfigure(1, weight=2)
         self.rowconfigure(0, weight=1)
+        self.rowconfigure(2, weight=1)
 
         # Izquierda: textarea
         lf_left = ttk.LabelFrame(self, text="Pega aquí el set estilo Showdown")
@@ -63,6 +64,44 @@ class InputTab(ttk.Frame):
             ttk.Label(grp2, text=k).grid(row=rr, column=0, sticky="e", padx=4, pady=2)
             ttk.Label(grp2, textvariable=self.stat_vars[k], width=10, relief="sunken", anchor="w").grid(row=rr, column=1, sticky="w", padx=4, pady=2)
             rr += 1
+            
+        # --- Otros ingresos de esta especie ---
+        # Haz que la fila 2 del panel derecho pueda expandir (por scroll)
+        right.rowconfigure(2, weight=1)
+
+        rel = ttk.LabelFrame(self, text="Otros sets de esta especie")
+        rel.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=(0, 8))
+
+        # contenedor con scrollbar
+        rel_container = ttk.Frame(rel)
+        rel_container.pack(fill="both", expand=True)
+
+        cols = ("id", "level", "nature", "item", "ability", "evs", "moves")
+        self.related_tree = ttk.Treeview(rel_container, columns=cols, show="headings", height=6)
+
+        # Scrollbar vertical
+        rel_scroll = ttk.Scrollbar(rel_container, orient="vertical", command=self.related_tree.yview)
+        self.related_tree.configure(yscrollcommand=rel_scroll.set)
+        rel_scroll.pack(side="right", fill="y")
+        self.related_tree.pack(side="left", fill="both", expand=True)
+
+        # Config columnas y headers
+        self.related_tree.column("id",      width=60,  anchor="e")
+        self.related_tree.column("level",   width=60,  anchor="e")
+        self.related_tree.column("nature",  width=90,  anchor="w")
+        self.related_tree.column("item",    width=140, anchor="w")
+        self.related_tree.column("ability", width=140, anchor="w")
+        self.related_tree.column("evs",   width=240, anchor="w")
+        self.related_tree.column("moves",   width=240, anchor="w")
+
+        self.related_tree.heading("id",      text="ID")
+        self.related_tree.heading("level",   text="Lv")
+        self.related_tree.heading("nature",  text="Naturaleza")
+        self.related_tree.heading("item",    text="Ítem")
+        self.related_tree.heading("ability", text="Habilidad")
+        self.related_tree.heading("evs",     text="EVs") 
+        self.related_tree.heading("moves",   text="Movimientos")
+
 
         # Botones
         bot = ttk.Frame(self)
@@ -91,6 +130,12 @@ class InputTab(ttk.Frame):
 
         self.current_parsed = p
         self._update_parsed_view(p)
+        
+        # Mostrar otros sets de esta especie
+        try:
+            self._reload_related_sets(p.get("name"))
+        except Exception:
+            pass
 
         # limpiar stats calculadas
         for k in self.stat_vars:
@@ -198,6 +243,12 @@ class InputTab(ttk.Frame):
                 self.on_saved(new_id)
             except Exception:
                 pass
+            
+        try:
+            self._reload_related_sets(name)
+        except Exception:
+            pass
+
 
 
     def on_clear(self):
@@ -207,6 +258,10 @@ class InputTab(ttk.Frame):
             self.vars[k].set("")
         for k in self.stat_vars:
             self.stat_vars[k].set("-")
+        # limpiar tabla de "Otros sets"
+        if hasattr(self, "related_tree"):
+            self._clear_related_sets()
+
 
     # ---------- Helpers ----------
     def _update_parsed_view(self, p: dict):
@@ -328,5 +383,88 @@ class InputTab(ttk.Frame):
             "ivs": ivs,
             "moves": moves,
         }
+
+    def _clear_related_sets(self):
+        if hasattr(self, "related_tree"):
+            for iid in self.related_tree.get_children():
+                self.related_tree.delete(iid)
+
+    def _reload_related_sets(self, species_name: str):
+        """Carga otros sets guardados de la misma especie."""
+        if not species_name or not hasattr(self, "related_tree"):
+            return
+
+        self._clear_related_sets()
+
+        # Servicios / repositorio
+        Session = self.services["Session"]
+        engine  = self.services["engine"]
+        list_sets = self.services.get("list_sets")
+        if list_sets is None:
+            # fallback directo al repo si no viene inyectado
+            from ...db.repository import list_sets as _list_sets
+            list_sets = _list_sets
+
+        # patrón de búsqueda por nombre (ILIKE '%name%')
+        species_like = species_name.strip()
+        if species_like and "%" not in species_like:
+            species_like = f"%{species_like}%"
+
+        # Consultar (ordenar por actualizado/creado desc si está disponible)
+        rows = []
+        try:
+            with Session(engine) as s:
+                rows = list_sets(
+                    s,
+                    only_species=species_like,
+                    order_by="updated_at",
+                    order_dir="desc",
+                    limit=50,
+                )
+        except TypeError:
+            # Firma antigua de list_sets sin order/limit
+            with Session(engine) as s:
+                rows = list_sets(s, only_species=species_like)
+
+        import json as _json
+
+        def _fmt_evs(evs: dict) -> str:
+            # Muestra solo los EVs > 0 en estilo Showdown: "252 HP / 4 Def / 252 Spe"
+            order = ["HP","Atk","Def","SpA","SpD","Spe"]
+            parts = []
+            for k in order:
+                try:
+                    v = int(evs.get(k, 0))
+                except Exception:
+                    v = 0
+                if v > 0:
+                    parts.append(f"{v} {k}")
+            return " / ".join(parts) if parts else "—"
+
+        for pset, sp in rows:
+            try:
+                moves = ", ".join((_json.loads(pset.moves_json) or [])[:4])
+            except Exception:
+                moves = "—"
+
+            try:
+                evs_dict = _json.loads(pset.evs_json) or {}
+            except Exception:
+                evs_dict = {}
+            evs_str = _fmt_evs(evs_dict)
+
+            self.related_tree.insert(
+                "", "end",
+                iid=str(pset.id),
+                values=(
+                    pset.id,
+                    pset.level,
+                    pset.nature or "—",
+                    pset.item or "—",
+                    pset.ability or "—",
+                    evs_str,                 # << NUEVO campo EVs
+                    moves or "—",
+                ),
+            )
 
 
