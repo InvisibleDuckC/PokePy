@@ -88,6 +88,13 @@ class DamageTab:
         # cuando cambia el movimiento seleccionado, actualiza sus datos (si hay algo seleccionado)
         self.d_move_pick.trace_add("write", lambda *args: (self.on_pick_move() if (self.d_move_pick.get() or "").strip() else None))
 
+        # contadores ohko / pos / no / total
+        self.d_cnt_ohko  = tk.StringVar(value="0")
+        self.d_cnt_pos   = tk.StringVar(value="0")
+        self.d_cnt_no    = tk.StringVar(value="0")
+        self.d_cnt_total = tk.StringVar(value="0")
+
+
         # UI
         self._build_ui()
 
@@ -209,6 +216,20 @@ class DamageTab:
         cols = ("target","hp","def_base","def_ev","def_used","def_item","xef","xmod","min","max","min_pct","max_pct","ohko")
         self.dmg_tree = ttk.Treeview(nb_container, columns=cols, show="headings", height=18)
         self.dmg_tree.pack(fill="both", expand=True, padx=8, pady=(0,8))
+        
+        # Resumen de KOs
+        sum_bar = ttk.LabelFrame(nb_container, text="Resumen KO")
+        sum_bar.pack(fill="x", padx=8, pady=(0,8))
+
+        def _mk(label_txt, var):
+            frm = ttk.Frame(sum_bar); frm.pack(side="left", padx=10)
+            ttk.Label(frm, text=label_txt).pack(side="left")
+            ttk.Label(frm, textvariable=var, width=4, relief="sunken", anchor="e").pack(side="left")
+
+        _mk("OHKO:",  self.d_cnt_ohko)
+        _mk("Posible:", self.d_cnt_pos)
+        _mk("No:",    self.d_cnt_no)
+        _mk("Total:", self.d_cnt_total)
 
         cfg = [
             ("target", 200, "Target"),
@@ -396,6 +417,12 @@ class DamageTab:
         # limpiar tabla
         for iid in self.dmg_tree.get_children():
             self.dmg_tree.delete(iid)
+            
+        # reset de contadores (por si salimos por validación)
+        self.d_cnt_ohko.set("0")
+        self.d_cnt_pos.set("0")
+        self.d_cnt_no.set("0")
+        self.d_cnt_total.set("0")
 
         # validar atacante
         label = (self.d_attacker.get() or "").strip()
@@ -420,7 +447,6 @@ class DamageTab:
             "attacker_label": label,
             "category": cat,
             "power": power,
-            "move_type": move_type,
             "item_label": item_label,
             "auto_stab": bool(self.d_auto_stab.get()),
             "stab_force": bool(self.d_stab_force.get()),
@@ -442,7 +468,6 @@ class DamageTab:
             "hits": (self.d_hits.get() or "Auto"),
             "terrain": self.d_terrain.get(),
             "move_type": self.d_move_type.get(),
-            "picked_move": self.d_move_pick.get(),
         }
 
         # mostrar loader y agendar el cálculo pesado para el próximo ciclo del loop
@@ -528,6 +553,9 @@ class DamageTab:
                 rows = list_sets(s, limit=None)
 
             items = []
+            
+            cnt_ohko = cnt_pos = cnt_no = 0
+            
             for pset, sp in rows:
                 # Item del defensor
                 def_item = (pset.item or "").strip()
@@ -631,6 +659,14 @@ class DamageTab:
 
                 ohko = "Sí" if tdmin >= hp_stat else ("Posible" if tdmax >= hp_stat else "No")
 
+                # contadores KO
+                if ohko == "Sí":
+                    cnt_ohko += 1
+                elif str(ohko).lower().startswith("pos"):
+                    cnt_pos += 1
+                else:
+                    cnt_no += 1
+
                 def_base_stat = int(sp.base_def if is_phys else sp.base_spd)
                 def_ev_val = int(D_evs.get("Def" if is_phys else "SpD", 0))
 
@@ -664,6 +700,12 @@ class DamageTab:
                 return r.get(key, -999999) if r.get(key) is not None else -999999
 
             items.sort(key=sort_key, reverse=reverse)
+
+            total = cnt_ohko + cnt_pos + cnt_no
+            self.d_cnt_ohko.set(str(cnt_ohko))
+            self.d_cnt_pos.set(str(cnt_pos))
+            self.d_cnt_no.set(str(cnt_no))
+            self.d_cnt_total.set(str(total))
 
             # pintar
             for r in items:
