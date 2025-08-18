@@ -58,6 +58,7 @@ class DamageTab:
         self.d_crit = tk.BooleanVar(value=False)
         self.d_burn = tk.BooleanVar(value=False)
         self.d_spread = tk.BooleanVar(value=False)
+        self.d_hits = tk.StringVar(value="Auto")  # nº de golpes (Auto por defecto)
 
         # Tera / clima / pantallas
         self.d_tera_off_on = tk.BooleanVar(value=False)
@@ -69,10 +70,23 @@ class DamageTab:
         self.d_lightscreen = tk.BooleanVar(value=False)
         self.d_veil = tk.BooleanVar(value=False)
         self.d_format = tk.StringVar(value="Singles")
+        
+        # Terreno
+        self.d_terrain = tk.StringVar(value="Ninguno")
+        self.d_terrain.trace_add("write", lambda *_: self.refresh_damage_list())
 
         # Ítems extra
         self.d_item_extra = tk.StringVar(value="Ninguno")
         self.d_assault_vest = tk.BooleanVar(value=False)
+        
+        # al lado de tus otros StringVar ya existentes:
+        self._last_attacker_label = None
+
+        # cuando cambia el atacante, recuerda el último label
+        self.d_attacker.trace_add("write", lambda *args: setattr(self, "_last_attacker_label", self.d_attacker.get()))
+
+        # cuando cambia el movimiento seleccionado, actualiza sus datos (si hay algo seleccionado)
+        self.d_move_pick.trace_add("write", lambda *args: (self.on_pick_move() if (self.d_move_pick.get() or "").strip() else None))
 
         # UI
         self._build_ui()
@@ -84,89 +98,111 @@ class DamageTab:
     def _build_ui(self):
         nb_container = self.master  # el Frame que te pasó app.py para esta página
 
-        top = ttk.LabelFrame(nb_container, text="Atacante y Parámetros")
-        top.pack(fill="x", padx=8, pady=8)
+        # === Fila superior: TOP + TERA en la misma línea ===
+        top_row = ttk.Frame(nb_container)
+        top_row.pack(fill="x", padx=8, pady=8)
+
+        # LabelFrame izquierdo
+        top = ttk.LabelFrame(top_row, text="Atacante y Parámetros")
+        top.pack(side="left", fill="both", expand=True, padx=(0, 8))
 
         # Atacante
         ttk.Label(top, text="Atacante:").grid(row=0, column=0, sticky="w", padx=4, pady=4)
         self.attacker_combo = ttk.Combobox(top, textvariable=self.d_attacker, width=40, state="readonly", values=[])
         self.attacker_combo.grid(row=0, column=1, columnspan=3, sticky="w", padx=4, pady=4)
-        self.attacker_combo.bind("<<ComboboxSelected>>", lambda e: self._reload_moves_for_selected_attacker(), self._update_attacker_item_and_stat)
-        ttk.Button(top, text="Cargar atacantes", command=self._reload_attackers).grid(row=0, column=4, padx=6)
+        self.attacker_combo.bind("<<ComboboxSelected>>", self._on_attacker_selected)
 
         # Movimiento
-        ttk.Label(top, text="Movimiento:").grid(row=0, column=6, sticky="w", padx=4, pady=4)
+        ttk.Label(top, text="Movimiento:").grid(row=1, column=0, sticky="w", padx=4, pady=4)
         self.cmb_move_pick = ttk.Combobox(top, textvariable=self.d_move_pick, width=28, values=[], state="readonly")
-        self.cmb_move_pick.grid(row=0, column=7, sticky="w", padx=4, pady=4)
+        self.cmb_move_pick.grid(row=1, column=1, sticky="w", padx=4, pady=4)
         self.cmb_move_pick.bind("<<ComboboxSelected>>", lambda e: self.on_pick_move())
-        ttk.Button(top, text="Cargar mov.", command=self.on_pick_move).grid(row=0, column=8, padx=6)
 
-        # Precisión display
-        self.lbl_accuracy_var = tk.StringVar(value="—")
-        ttk.Label(top, text="Acc:").grid(row=1, column=6, sticky="e", padx=4, pady=4)
-        ttk.Label(top, textvariable=self.lbl_accuracy_var, width=6).grid(row=1, column=7, sticky="w", padx=4, pady=4)
-
-        # Parámetros
-        ttk.Label(top, text="Categoría:").grid(row=1, column=0, sticky="w", padx=4, pady=4)
-        ttk.Combobox(top, textvariable=self.d_category, width=12, state="readonly",
-                     values=["Physical","Special"]).grid(row=1, column=1, sticky="w", padx=4, pady=4)
-        self.d_category.trace_add("write", lambda *args: self._update_attacker_item_and_stat())
-
-        ttk.Label(top, text="Poder:").grid(row=1, column=2, sticky="w", padx=4, pady=4)
-        ttk.Entry(top, textvariable=self.d_power, width=8).grid(row=1, column=3, sticky="w", padx=4, pady=4)
-
-        ttk.Label(top, text="Tipo mov.:").grid(row=1, column=4, sticky="w", padx=4, pady=4)
-        ALL_TYPES = self._all_types()
-        ttk.Combobox(top, textvariable=self.d_move_type, width=14, values=ALL_TYPES, state="readonly")\
-            .grid(row=1, column=5, sticky="w", padx=4, pady=4)
-
-        # STAB
-        ttk.Checkbutton(top, text="STAB automático", variable=self.d_auto_stab).grid(row=2, column=0, padx=4, pady=4, sticky="w")
-        ttk.Checkbutton(top, text="STAB forzar", variable=self.d_stab_force).grid(row=2, column=2, padx=4, pady=4, sticky="w")
-
-        # Crit / Burn / Spread
-        ttk.Checkbutton(top, text="Crítico (x1.5)", variable=self.d_crit).grid(row=2, column=1, padx=4, pady=4, sticky="w")
-        ttk.Checkbutton(top, text="Quemado (Atk x0.5)", variable=self.d_burn).grid(row=2, column=3, padx=4, pady=4, sticky="w")
-        ttk.Checkbutton(top, text="Movimiento de área (Dobles x0.75)", variable=self.d_spread).grid(row=2, column=7, padx=4, pady=4, sticky="w")
-        
         # Ítem
         self.att_item_var = tk.StringVar(value="—")
-        ttk.Label(top, text="Ítem (att):").grid(row=2, column=4, sticky="w", padx=4, pady=4)
+        ttk.Label(top, text="Ítem (att):").grid(row=0, column=3, sticky="e", padx=4, pady=4)
         ttk.Label(top, textvariable=self.att_item_var, width=22, relief="sunken", anchor="w")\
-        .grid(row=2, column=5, sticky="w", padx=4, pady=4)
+        .grid(row=0, column=4, sticky="w", padx=4, pady=4)
 
         self.att_stat_var = tk.StringVar(value="—")
-        ttk.Label(top, text="Stat (att):").grid(row=3, column=4, sticky="w", padx=4, pady=(0,4))
+        ttk.Label(top, text="Stat (att):").grid(row=1, column=3, sticky="e", padx=4, pady=(0,4))
         ttk.Label(top, textvariable=self.att_stat_var, width=22, relief="sunken", anchor="w")\
-        .grid(row=3, column=5, sticky="w", padx=4, pady=(0,4))
+        .grid(row=1, column=4, sticky="w", padx=4, pady=(0,4))
 
+        # Parámetros
+        ttk.Label(top, text="Categoría:").grid(row=2, column=0, sticky="w", padx=4, pady=4)
+        ttk.Combobox(top, textvariable=self.d_category, width=12, state="readonly",
+                     values=["Physical","Special"]).grid(row=2, column=1, sticky="w", padx=4, pady=4)
+        self.d_category.trace_add("write", lambda *args: self._update_attacker_item_and_stat())
+
+        ttk.Label(top, text="Poder:").grid(row=3, column=2, sticky="e", padx=4, pady=4)
+        ttk.Entry(top, textvariable=self.d_power, width=8).grid(row=3, column=3, sticky="w", padx=4, pady=4)
+
+        ttk.Label(top, text="Tipo mov.:").grid(row=2, column=2, sticky="w", padx=4, pady=4)
+        ALL_TYPES = self._all_types()
+        ttk.Combobox(top, textvariable=self.d_move_type, width=14, values=ALL_TYPES, state="readonly")\
+            .grid(row=2, column=3, sticky="w", padx=4, pady=4)
+            
+        # Precisión display
+        self.lbl_accuracy_var = tk.StringVar(value="—")
+        ttk.Label(top, text="Acc:").grid(row=4, column=2, sticky="e", padx=4, pady=4)
+        ttk.Label(top, textvariable=self.lbl_accuracy_var, width=6).grid(row=4, column=3, sticky="w", padx=4, pady=4)
+
+        # Golpes multiples
+        ttk.Label(top, text="Golpes:").grid(row=3, column=4, sticky="sw", padx=4, pady=4)
+        ttk.Combobox(
+            top, textvariable=self.d_hits, width=16, state="readonly",
+            values=["Auto","1","2","3","4","5","10","2-5 (prob.)","4-5 (Loaded Dice)"]
+        ).grid(row=4, column=4, sticky="nw", padx=4, pady=4)
+
+        # STAB
+        ttk.Checkbutton(top, text="STAB automático", variable=self.d_auto_stab).grid(row=3, column=0, padx=4, pady=4, sticky="w")
+        ttk.Checkbutton(top, text="STAB forzar", variable=self.d_stab_force).grid(row=4, column=0, padx=4, pady=4, sticky="w")
+
+        # Crit / Burn / Spread
+        ttk.Checkbutton(top, text="Crítico (x1.5)", variable=self.d_crit).grid(row=3, column=1, padx=4, pady=4, sticky="w")
+        ttk.Checkbutton(top, text="Quemado (Atk x0.5)", variable=self.d_burn).grid(row=4, column=1, padx=4, pady=4, sticky="w")
+        ttk.Checkbutton(top, text="Movimiento de área (Dobles x0.75)", variable=self.d_spread).grid(row=2, column=4, padx=4, pady=4, sticky="w")
+        
         # Calcular daño
-        ttk.Button(top, text="Calcular", command=self.refresh_damage_list).grid(row=2, column=6, padx=8, pady=4)
+        ttk.Button(top, text="Calcular", command=self.refresh_damage_list).grid(row=4, column=6, padx=8, pady=4)
 
-        # --- Tera / Campo ---
-        tera_frame = ttk.LabelFrame(nb_container, text="Tera / Campo")
-        tera_frame.pack(fill="x", padx=8, pady=(0,8))
-
+        # LabelFrame derecho
+        tera_frame = ttk.LabelFrame(top_row, text="Tera / Campo")
+        tera_frame.pack(side="left", fill="both", expand=True)
+        
+        # Tera
         ttk.Checkbutton(tera_frame, text="Atacante Tera ON", variable=self.d_tera_off_on).grid(row=0, column=0, padx=6, pady=6, sticky="w")
         ttk.Label(tera_frame, text="Tera tipo (Atacante):").grid(row=0, column=1, sticky="w")
         ttk.Combobox(tera_frame, textvariable=self.d_tera_off_type, width=14,
                      values=ALL_TYPES, state="readonly").grid(row=0, column=2, padx=4)
-
-        ttk.Checkbutton(tera_frame, text="Defensor Tera ON", variable=self.d_tera_def_on).grid(row=0, column=3, padx=6, pady=6, sticky="w")
-        ttk.Label(tera_frame, text="Tera tipo (Defensor):").grid(row=0, column=4, sticky="w")
+        
+        ttk.Checkbutton(tera_frame, text="Defensor Tera ON", variable=self.d_tera_def_on).grid(row=1, column=0, padx=6, pady=6, sticky="w")
+        ttk.Label(tera_frame, text="Tera tipo (Defensor):").grid(row=1, column=1, sticky="w")
         ttk.Combobox(tera_frame, textvariable=self.d_tera_def_type, width=14,
-                     values=ALL_TYPES, state="readonly").grid(row=0, column=5, padx=4)
-
-        ttk.Label(tera_frame, text="Clima:").grid(row=1, column=0, sticky="w", padx=6)
+                     values=ALL_TYPES, state="readonly").grid(row=1, column=2, padx=4)
+        
+        # Clima
+        ttk.Label(tera_frame, text="Clima:").grid(row=2, column=1, sticky="w", padx=6)
         ttk.Combobox(tera_frame, textvariable=self.d_weather, width=14, state="readonly",
-                     values=["Ninguno","Lluvia","Sol","Tormenta Arena","Nieve"]).grid(row=1, column=1, padx=4)
-        ttk.Checkbutton(tera_frame, text="Reflect", variable=self.d_reflect).grid(row=1, column=2, padx=6, sticky="w")
-        ttk.Checkbutton(tera_frame, text="Light Screen", variable=self.d_lightscreen).grid(row=1, column=3, padx=6, sticky="w")
-        ttk.Checkbutton(tera_frame, text="Aurora Veil", variable=self.d_veil).grid(row=1, column=4, padx=6, sticky="w")
+                     values=["Ninguno","Lluvia","Sol","Tormenta Arena","Nieve"]).grid(row=3, column=1, padx=4)
+        
+        # Terreno
+        ttk.Label(tera_frame, text="Campo:").grid(row=2, column=2, sticky="w", padx=6)
+        ttk.Combobox(
+            tera_frame, textvariable=self.d_terrain, width=14, state="readonly",
+            values=["Ninguno", "Eléctrico", "Hierba", "Niebla", "Psíquico"]
+        ).grid(row=3, column=2, padx=4)
+        
+        # Pantallas
+        ttk.Label(tera_frame, text="Walls:").grid(row=2, column=0, sticky="w", padx=6)
+        ttk.Checkbutton(tera_frame, text="Reflect", variable=self.d_reflect).grid(row=3, column=0, padx=6, sticky="w")
+        ttk.Checkbutton(tera_frame, text="Light Screen", variable=self.d_lightscreen).grid(row=4, column=0, padx=6, sticky="w")
+        ttk.Checkbutton(tera_frame, text="Aurora Veil", variable=self.d_veil).grid(row=5, column=0, padx=6, sticky="w")
 
-        ttk.Label(tera_frame, text="Formato:").grid(row=1, column=5, sticky="e")
-        ttk.Combobox(tera_frame, textvariable=self.d_format, width=10, state="readonly",
-                     values=["Singles","Dobles"]).grid(row=1, column=6, padx=4)
+        ttk.Label(tera_frame, text="Formato:").grid(row=5, column=1, sticky="e")
+        ttk.Combobox(tera_frame, textvariable=self.d_format, width=14, state="readonly",
+                     values=["Singles","Dobles"]).grid(row=5, column=2, padx=4)
 
 
         # Tabla
@@ -201,6 +237,24 @@ class DamageTab:
         self.loader_label.pack(side="left")
         # No lo mostramos aún: queda oculto con pack_forget()
         self.loader_frame.pack_forget()
+
+        # cargar automáticamente al mostrar/focalizar la pestaña
+        try:
+            self.master.bind("<FocusIn>", lambda e: self._ensure_default_loaded())
+        except Exception:
+            pass
+
+        # disparo inicial tras construir la UI
+        self.master.after(0, self._ensure_default_loaded)
+        
+        # --- recargar atacantes cuando se muestre esta pestaña ---
+        try:
+            nb = self.master.nametowidget(self.master.winfo_parent())  # Notebook contenedor
+            nb.bind("<<NotebookTabChanged>>", self._on_notebook_tab_changed, add="+")
+        except Exception:
+            pass
+
+
 
 
     # ---------- datos auxiliares ----------
@@ -267,6 +321,9 @@ class DamageTab:
             mv = []
         self.cmb_move_pick["values"] = mv
         self.d_move_pick.set(mv[0] if mv else "")
+        
+        if (self.d_move_pick.get() or "").strip():
+            self.on_pick_move()
 
     # ---------- PokéAPI (caché local) ----------
     def on_pick_move(self):
@@ -382,6 +439,10 @@ class DamageTab:
             "item_extra": self.d_item_extra.get(),
             "assault_vest": bool(self.d_assault_vest.get()),
             "picked_move": (self.d_move_pick.get() or "").strip().lower(),
+            "hits": (self.d_hits.get() or "Auto"),
+            "terrain": self.d_terrain.get(),
+            "move_type": self.d_move_type.get(),
+            "picked_move": self.d_move_pick.get(),
         }
 
         # mostrar loader y agendar el cálculo pesado para el próximo ciclo del loop
@@ -413,6 +474,7 @@ class DamageTab:
             item_extra   = params["item_extra"]
             assault_vest = params["assault_vest"]
             picked_move  = params["picked_move"]
+            
 
             # servicios
             Session = self.services["Session"]; engine = self.services["engine"]
@@ -540,6 +602,9 @@ class DamageTab:
                     if fmt_doubles and spread:
                         mod *= 0.75
                     xmod_val = float(mod)
+                    terrain_mod = self._terrain_xmod(params.get("terrain"), params.get("move_type"), params.get("picked_move"))
+                    xmod_val *= terrain_mod
+
                 finally:
                     # restaurar UI vars
                     self.d_weather.set(old_weather)
@@ -548,11 +613,23 @@ class DamageTab:
                     self.d_veil.set(old_veil)
                     self.d_format.set(old_format)
 
+                # Daño por HITO único (single hit)
                 dmin = int(base_damage * 0.85 * xmod_val)
                 dmax = int(base_damage * 1.00 * xmod_val)
-                min_pct = round(dmin * 100.0 / hp_stat, 1)
-                max_pct = round(dmax * 100.0 / hp_stat, 1)
-                ohko = "Sí" if dmin >= hp_stat else ("Posible" if dmax >= hp_stat else "No")
+
+                # Nº de golpes (Auto usa nombre del movimiento + Loaded Dice)
+                min_hits, max_hits, exp_hits, _mode = self._resolve_hits(
+                    params.get("picked_move"), params.get("hits"), att_item
+                )
+
+                # Total por turno (rango)
+                tdmin = int(dmin * min_hits)
+                tdmax = int(dmax * max_hits)
+
+                min_pct = round(tdmin * 100.0 / hp_stat, 1)
+                max_pct = round(tdmax * 100.0 / hp_stat, 1)
+
+                ohko = "Sí" if tdmin >= hp_stat else ("Posible" if tdmax >= hp_stat else "No")
 
                 def_base_stat = int(sp.base_def if is_phys else sp.base_spd)
                 def_ev_val = int(D_evs.get("Def" if is_phys else "SpD", 0))
@@ -809,4 +886,183 @@ class DamageTab:
                 self.att_stat_var.set(f"Atk {stats['Atk']}")
             else:
                 self.att_stat_var.set(f"SpA {stats['SpA']}")
+                
 
+    def _resolve_hits(self, picked_move: str, hits_sel: str, att_item: str):
+        """
+        Devuelve (min_hits, max_hits, expected_hits, mode)
+        - mode: "fixed" (N fijo), "range" (min..max), "auto" (detectado)
+        """
+        mv = (picked_move or "").strip().lower()
+        item = (att_item or "").strip().lower()
+        sel = (hits_sel or "Auto").strip().lower()
+
+        PRESETS = {
+            # fijos 2
+            "double hit": (2, 2), "double kick": (2, 2), "dual chop": (2, 2),
+            "bonemerang": (2, 2), "twinneedle": (2, 2), "dragon darts": (2, 2),
+            # fijos 3
+            "surging strikes": (3, 3), "triple kick": (3, 3), "triple axel": (3, 3),
+            # 2–5
+            "bullet seed": (2, 5), "icicle spear": (2, 5), "rock blast": (2, 5),
+            "arm thrust": (2, 5), "fury swipes": (2, 5), "pin missile": (2, 5),
+            "scale shot": (2, 5), "water shuriken": (2, 5),
+            # 2–10 aprox
+            "population bomb": (2, 10),
+        }
+
+        def dist_2_5_expected():
+            # 37.5%:2, 37.5%:3, 12.5%:4, 12.5%:5 → 3.0 esperado
+            return 3.0
+
+        # Selección manual
+        if sel in {"1","2","3","4","5","10"}:
+            n = int(sel); return (n, n, float(n), "fixed")
+        if sel.startswith("2-5"):
+            if "loaded dice" in item:
+                return (4, 5, 4.5, "range")
+            return (2, 5, dist_2_5_expected(), "range")
+        if sel.startswith("4-5"):
+            return (4, 5, 4.5, "range")
+
+        # Auto por movimiento
+        if mv in PRESETS:
+            lo, hi = PRESETS[mv]
+            if (lo, hi) == (2, 5) and "loaded dice" in item:
+                return (4, 5, 4.5, "auto")
+            if (lo, hi) == (2, 5):
+                esp = 3.0
+            elif (lo, hi) == (2, 10):
+                esp = 6.0
+            else:
+                esp = (lo + hi) / 2.0
+            return (lo, hi, esp, "auto")
+
+        # fallback: 1 golpe
+        return (1, 1, 1.0, "fixed")
+
+
+    def _reload_attackers(self):
+        """Reconstruye la lista desde DB y preserva selección/último visto."""
+        self.d_attacker_map.clear()
+        labels = []
+        Session = self.services["Session"]; engine = self.services["engine"]; list_sets = self.services["list_sets"]
+        with Session(engine) as s:
+            rows = list_sets(s, limit=None)
+
+        for pset, sp in rows:
+            label = f"{sp.name} (Lv{pset.level}/{pset.nature or '—'}) #{pset.id}"
+            self.d_attacker_map[label] = pset.id
+            labels.append(label)
+
+        self.attacker_combo["values"] = labels
+
+        if labels:
+            # 1) Preferir selección actual si sigue válida; si no, último visto; si no, el primero
+            current = (self.d_attacker.get() or "").strip()
+            prefer  = current or (self._last_attacker_label or "")
+            target  = prefer if prefer in labels else labels[0]
+            if target != current:
+                self.d_attacker.set(target)
+
+            # 2) Sincronizar movimientos y stats del atacante
+            self._reload_moves_for_selected_attacker()
+            self._update_attacker_item_and_stat()
+
+            # 3) Actualizar datos del movimiento seleccionado (power/tipo/categoría/acc, etc.)
+            if (self.d_move_pick.get() or "").strip():
+                self.on_pick_move()
+        else:
+            # No hay registros: limpiar UI relacionada
+            self.d_attacker.set("")
+            self.cmb_move_pick["values"] = []
+            self.d_move_pick.set("")
+            try:
+                self.att_item_var.set("—")
+                self.att_stat_var.set("—")
+            except Exception:
+                pass
+
+
+    def _ensure_default_loaded(self):
+        """Garantiza que al entrar a la pestaña haya un atacante y un movimiento con datos actualizados."""
+        # si aún no hay lista de atacantes cargada, cárgala
+        if not self.attacker_combo["values"]:
+            self._reload_attackers()
+            return  # _reload_attackers ya setea atacante+movimiento y actualiza
+
+        # si no hay atacante seleccionado, selecciona uno
+        if not (self.d_attacker.get() or "").strip():
+            labels = list(self.attacker_combo["values"])
+            if labels:
+                target = self._last_attacker_label if (self._last_attacker_label in labels) else labels[0]
+                self.d_attacker.set(target)
+                self._reload_moves_for_selected_attacker()
+                self._update_attacker_item_and_stat()
+                return
+
+        # si no hay movimiento, recargar de ese atacante
+        if not (self.d_move_pick.get() or "").strip():
+            self._reload_moves_for_selected_attacker()
+            self._update_attacker_item_and_stat()
+            return
+
+        # sincroniza campos del movimiento por si se quedó viejo
+        self.on_pick_move()
+
+    def _on_attacker_selected(self, event=None):
+        self._reload_moves_for_selected_attacker()
+        self._update_attacker_item_and_stat()
+        self.on_pick_move()  # actualiza datos del movimiento
+        
+    def _terrain_xmod(self, terrain: str | None, move_type: str | None, picked_move: str | None) -> float:
+        """
+        Devuelve el multiplicador por 'Campo':
+        - Eléctrico: +30% a movimientos Eléctricos del atacante (1.3)
+        - Psíquico:  +30% a movimientos Psíquicos del atacante (1.3)
+        - Hierba:    +30% a movimientos de tipo Planta (1.3)
+                    y -50% a Earthquake/Bulldoze/Magnitude (0.5)
+        - Niebla:    -50% a movimientos Dragón (0.5)
+        Nota: En juegos aplica a 'grounded'. Aquí asumimos grounded (simple).
+        """
+        t = (terrain or "").strip().lower()
+        mt = (move_type or "").strip().lower()
+        mv = (picked_move or "").strip().lower()
+
+        # normaliza acentos
+        def norm(s: str) -> str:
+            return (s.replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u"))
+        t, mt = norm(t), norm(mt)
+
+        mod = 1.0
+        if t in {"electrico", "electrico/campo", "campo electrico", "electrico campo", "electrico terrain", "electric", "electric terrain"}:
+            if mt in {"electrico", "electric"}:
+                mod *= 1.3
+        elif t in {"psiquico", "campo psiquico", "psiquico terrain", "psiquico/campo", "psychic", "psychic terrain"}:
+            if mt in {"psiquico", "psychic"}:
+                mod *= 1.3
+        elif t in {"hierba", "campo hierba", "hierba terrain", "grassy", "grassy terrain", "planta"}:
+            if mt in {"hierba", "grassy", "planta", "grass"}:
+                mod *= 1.3
+            # Reducción de movimientos sísmicos
+            if mv in {"earthquake", "bulldoze", "magnitude"}:
+                mod *= 0.5
+        elif t in {"niebla", "campo niebla", "misty", "misty terrain"}:
+            if mt in {"dragon", "dragon/dragón", "dragon/dragon", "dragon type"} or mt.startswith("dragon"):
+                mod *= 0.5
+
+        return mod
+
+    def _on_notebook_tab_changed(self, event=None):
+        """Si la pestaña visible es ésta, recarga atacantes desde DB y sincroniza UI."""
+        nb = event.widget
+        try:
+            current = nb.nametowidget(nb.select())
+        except Exception:
+            return
+        if current is self.master:
+            # recuerda el seleccionado actual si hay
+            if (self.d_attacker.get() or "").strip():
+                self._last_attacker_label = self.d_attacker.get()
+            # recarga atacantes desde la base y sincroniza movimientos/valores
+            self._reload_attackers()

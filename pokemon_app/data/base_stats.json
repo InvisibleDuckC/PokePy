@@ -342,5 +342,45 @@
     "SpA": 80,
     "SpD": 75,
     "Spe": 78
+  },
+  "Scizor": {
+    "HP": 70,
+    "Atk": 130,
+    "Def": 100,
+    "SpA": 55,
+    "SpD": 80,
+    "Spe": 65
+  },
+  "Primarina": {
+    "HP": 80,
+    "Atk": 74,
+    "Def": 74,
+    "SpA": 126,
+    "SpD": 116,
+    "Spe": 60
+  },
+  "Weezing-Galar": {
+    "HP": 65,
+    "Atk": 90,
+    "Def": 120,
+    "SpA": 85,
+    "SpD": 70,
+    "Spe": 60
+  },
+  "Empoleon": {
+    "HP": 84,
+    "Atk": 86,
+    "Def": 88,
+    "SpA": 111,
+    "SpD": 101,
+    "Spe": 60
+  },
+  "Arcanine-Hisui": {
+    "HP": 95,
+    "Atk": 115,
+    "Def": 80,
+    "SpA": 95,
+    "SpD": 80,
+    "Spe": 90
   }
 }

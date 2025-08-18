@@ -173,5 +173,89 @@
     "power": 120,
     "damage_class": "physical",
     "accuracy": 100
+  },
+  "Wave Crash": {
+    "name": "Wave Crash",
+    "type": "Water",
+    "power": 120,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Icicle Spear": {
+    "name": "Icicle Spear",
+    "type": "Ice",
+    "power": 25,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Scale Shot": {
+    "name": "Scale Shot",
+    "type": "Dragon",
+    "power": 25,
+    "damage_class": "physical",
+    "accuracy": 90
+  },
+  "Last Respects": {
+    "name": "Last Respects",
+    "type": "Ghost",
+    "power": 50,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Psychic Fangs": {
+    "name": "Psychic Fangs",
+    "type": "Psychic",
+    "power": 85,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Wood Hammer": {
+    "name": "Wood Hammer",
+    "type": "Grass",
+    "power": 120,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Bullet Punch": {
+    "name": "Bullet Punch",
+    "type": "Steel",
+    "power": 40,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Strange Steam": {
+    "name": "Strange Steam",
+    "type": "Fairy",
+    "power": 90,
+    "damage_class": "special",
+    "accuracy": 95
+  },
+  "Flash Cannon": {
+    "name": "Flash Cannon",
+    "type": "Steel",
+    "power": 80,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Water Pledge": {
+    "name": "Water Pledge",
+    "type": "Water",
+    "power": 80,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Shadow Ball": {
+    "name": "Shadow Ball",
+    "type": "Ghost",
+    "power": 80,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Make It Rain": {
+    "name": "Make It Rain",
+    "type": "Steel",
+    "power": 120,
+    "damage_class": "special",
+    "accuracy": 100
   }
 }

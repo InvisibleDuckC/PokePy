@@ -155,5 +155,29 @@
   ],
   "Lycanroc-Dusk": [
     "Rock"
+  ],
+  "Basculegion-Male": [
+    "Water",
+    "Ghost"
+  ],
+  "Primarina": [
+    "Water",
+    "Fairy"
+  ],
+  "Scizor": [
+    "Bug",
+    "Steel"
+  ],
+  "Weezing-Galar": [
+    "Poison",
+    "Fairy"
+  ],
+  "Empoleon": [
+    "Water",
+    "Steel"
+  ],
+  "Arcanine-Hisui": [
+    "Fire",
+    "Rock"
   ]
 }
