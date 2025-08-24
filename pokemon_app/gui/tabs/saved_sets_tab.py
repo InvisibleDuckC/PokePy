@@ -2,6 +2,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import json as _json
 from datetime import datetime
+# --- para sprite desde PokeAPI ---
+import io, base64
+try:
+    from PIL import Image, ImageTk   # recomendado
+except Exception:
+    Image = ImageTk = None
+
 
 # Naturalezas por si quieres un combo (opcional)
 NATURES = sorted(list({
@@ -636,6 +643,10 @@ class EditSetDialog(tk.Toplevel):
         self.on_saved = on_saved
         self.title(f"Editar Set #{set_id}")
         self.resizable(False, False)
+        
+        self._pokeapi_moves_cache = {}
+        self._pokeapi_abilities_cache = {}  # {slug: [labels]}
+        self._sprite_mem_cache = {}         # {slug: bytes}
 
         self._build_ui()
         self._load()
@@ -646,25 +657,62 @@ class EditSetDialog(tk.Toplevel):
         self.focus_set()
 
     def _build_ui(self):
-        frm = ttk.Frame(self); frm.pack(fill="both", expand=True, padx=10, pady=10)
+        # === CONTENEDOR RAÍZ ===
+        root = ttk.Frame(self)
+        root.pack(fill="both", expand=True, padx=8, pady=8)
 
-        r = 0
-        ttk.Label(frm, text="Especie:").grid(row=r, column=0, sticky="e", padx=4, pady=4)
-        self.var_species = tk.StringVar(value=""); ttk.Label(frm, textvariable=self.var_species).grid(row=r, column=1, sticky="w")
-        ttk.Label(frm, text="Nivel:").grid(row=r, column=2, sticky="e", padx=4, pady=4)
-        self.var_level = tk.StringVar(value="100"); ttk.Entry(frm, textvariable=self.var_level, width=6).grid(row=r, column=3, sticky="w"); r+=1
+        # Grid 2x2
+        root.columnconfigure(0, weight=1)
+        root.columnconfigure(1, weight=1)
+        root.rowconfigure(0, weight=0)
+        root.rowconfigure(1, weight=1)
 
-        ttk.Label(frm, text="Naturaleza:").grid(row=r, column=0, sticky="e")
+        # ---------------------------------------------------------
+
+        # (0,0) SPRITE
+        fr_sprite = ttk.LabelFrame(root, text="Sprite")
+        fr_sprite.grid(row=0, column=0, sticky="nw", padx=(0,8), pady=(0,8))
+        self.sprite_label = ttk.Label(fr_sprite, text="(sin sprite)", anchor="center", width=16)
+        self.sprite_label.pack(padx=6, pady=6)
+        self._sprite_img = None  # evitar GC
+
+        # ---------------------------------------------------------
+
+        # (0,1) DATOS (Especie, Nivel, Naturaleza, Ítem, Habilidad, Tera)
+        fr_data = ttk.LabelFrame(root, text="Datos")
+        fr_data.grid(row=0, column=1, sticky="new", padx=(8,0), pady=(0,8))
+        for c in range(2):
+            fr_data.columnconfigure(c, weight=1)
+
+        # Usa tus propias StringVar si ya existen:
+        self.var_species   = getattr(self, "var_species",   tk.StringVar())
+        self.var_level     = getattr(self, "var_level",     tk.StringVar())
+        self.var_nature    = getattr(self, "var_nature",    tk.StringVar())
+        self.var_item      = getattr(self, "var_item",      tk.StringVar())
+        self.var_ability   = getattr(self, "var_ability",   tk.StringVar())
+        self.var_tera_type = getattr(self, "var_tera_type", tk.StringVar())
+        
+        ttk.Label(fr_data, text="Especie:").grid(row=0, column=0, sticky="w", padx=4, pady=2)
+        self.var_species = tk.StringVar(value="")
+        ttk.Label(fr_data, textvariable=self.var_species).grid(row=0, column=1, sticky="w")
+        
+        ttk.Label(fr_data, text="Nivel:").grid(row=1, column=0, sticky="w", padx=4, pady=2)
+        self.var_level = tk.StringVar(value="100")
+        ttk.Entry(fr_data, textvariable=self.var_level, width=6).grid(row=1, column=1, sticky="w")
+
+        ttk.Label(fr_data, text="Naturaleza:").grid(row=2, column=0, sticky="w", padx=4, pady=2)
         self.var_nature = tk.StringVar(value="")
-        ttk.Combobox(frm, textvariable=self.var_nature, width=16, values=[""] + list(NATURES), state="readonly").grid(row=r, column=1, sticky="w")
+        ttk.Combobox(fr_data, textvariable=self.var_nature, width=16, values=[""] + list(NATURES), state="readonly").grid(row=2, column=1, sticky="w")
 
-        ttk.Label(frm, text="Item:").grid(row=r, column=2, sticky="e")
-        self.var_item = tk.StringVar(value=""); ttk.Entry(frm, textvariable=self.var_item, width=18).grid(row=r, column=3, sticky="w"); r+=1
+        ttk.Label(fr_data, text="Item:").grid(row=3, column=0, sticky="w", padx=4, pady=2)
+        self.var_item = tk.StringVar(value="")
+        ttk.Entry(fr_data, textvariable=self.var_item, width=18).grid(row=3, column=1, sticky="w")
 
-        ttk.Label(frm, text="Ability:").grid(row=r, column=0, sticky="e")
-        self.var_ability = tk.StringVar(value=""); ttk.Entry(frm, textvariable=self.var_ability, width=18).grid(row=r, column=1, sticky="w")
+        ttk.Label(fr_data, text="Habilidad:").grid(row=4, column=0, sticky="w", padx=4, pady=2)
+        self.cmb_ability = ttk.Combobox(fr_data, textvariable=self.var_ability, state="readonly", values=["—"])
+        self.cmb_ability.grid(row=4, column=1, sticky="w")
 
-        ttk.Label(frm, text="Tera Type:").grid(row=r, column=2, sticky="e")
+        ttk.Label(fr_data, text="Tera Type:").grid(row=5, column=0, sticky="w", padx=4, pady=2)
         self.var_tera = tk.StringVar(value="")
         # Tipos Tera: intenta importar desde services; si no, usa fallback local
         try:
@@ -676,51 +724,52 @@ class EditSetDialog(tk.Toplevel):
                 "Rock","Ghost","Dragon","Dark","Steel","Fairy"
                 # Si usas Tera Stellar, agrega: "Stellar"
             ]
-
         ttk.Combobox(
-            frm, textvariable=self.var_tera, width=16,
+            fr_data, textvariable=self.var_tera, width=16,
             values=[""] + list(_ALL_TYPES), state="readonly"
-        ).grid(row=r, column=3, sticky="w"); r += 1
+        ).grid(row=5, column=1, sticky="w")
 
-        # EVs / IVs
-        ev_order = ["HP","Atk","Def","SpA","SpD","Spe"]
-        ttk.Label(frm, text="EVs (0-252):").grid(row=r, column=0, sticky="e"); r+=1
-        self.vars_evs = {}
-        for i,stat in enumerate(ev_order):
-            ttk.Label(frm, text=stat).grid(row=r, column=0 + (i%3)*2, sticky="e")
-            v = tk.StringVar(value="0"); self.vars_evs[stat] = v
-            ttk.Entry(frm, textvariable=v, width=6).grid(row=r, column=1 + (i%3)*2, sticky="w")
-            if i%3==2: r+=1
-        if i%3!=2: r+=1
+        # ---------------------------------------------------------
+        
+        # (1,0) ESTADÍSTICAS (EVs / IVs)
+        fr_stats = ttk.LabelFrame(root, text="Estadísticas")
+        fr_stats.grid(row=1, column=0, sticky="nsew", padx=(0,8), pady=(8,0))
+        fr_stats.columnconfigure(0, weight=1)
+        fr_stats.columnconfigure(1, weight=1)
+        # Subcontenedores
+        fr_evs = ttk.LabelFrame(fr_stats, text="EVs"); fr_evs.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
+        fr_ivs = ttk.LabelFrame(fr_stats, text="IVs"); fr_ivs.grid(row=0, column=1, sticky="nsew", padx=4, pady=4)
 
-        ttk.Label(frm, text="IVs (0-31):").grid(row=r, column=0, sticky="e"); r+=1
-        self.vars_ivs = {}
-        for i,stat in enumerate(ev_order):
-            ttk.Label(frm, text=stat).grid(row=r, column=0 + (i%3)*2, sticky="e")
-            v = tk.StringVar(value="31"); self.vars_ivs[stat] = v
-            ttk.Entry(frm, textvariable=v, width=6).grid(row=r, column=1 + (i%3)*2, sticky="w")
-            if i%3==2: r+=1
-        if i%3!=2: r+=1
+        stats = ["HP","Atk","Def","SpA","SpD","Spe"]
 
-        ttk.Label(frm, text="Movimientos (máx 4):").grid(row=r, column=0, sticky="ne", padx=4, pady=(8,4))
+        # Reutiliza tus StringVar si existen:
+        self.evs_vars = getattr(self, "evs_vars", {k: tk.StringVar(value="0") for k in stats})
+        self.ivs_vars = getattr(self, "ivs_vars", {k: tk.StringVar(value="31") for k in stats})
 
-        moves_box = ttk.Frame(frm)
-        moves_box.grid(row=r, column=1, columnspan=3, sticky="ew", pady=(8,4))
-        moves_box.columnconfigure(0, weight=1)
-        moves_box.columnconfigure(1, weight=1)
+        for i, k in enumerate(stats):
+            ttk.Label(fr_evs, text=k).grid(row=i, column=0, sticky="e", padx=4, pady=2)
+            ttk.Entry(fr_evs, textvariable=self.evs_vars[k], width=6).grid(row=i, column=1, sticky="w", padx=4, pady=2)
 
-        # 4 combobox de movimientos
+            ttk.Label(fr_ivs, text=k).grid(row=i, column=0, sticky="e", padx=4, pady=2)
+            ttk.Entry(fr_ivs, textvariable=self.ivs_vars[k], width=6).grid(row=i, column=1, sticky="w", padx=4, pady=2)
+
+        
+        # ---------------------------------------------------------
+
+        # (1,1) MOVIMIENTOS (4 combobox, sin duplicados)
+        fr_moves = ttk.LabelFrame(root, text="Movimientos (máx 4)")
+        fr_moves.grid(row=1, column=1, sticky="nsew", padx=(8,0), pady=(8,0))
+        fr_moves.columnconfigure(0, weight=1)
+
         self._move_vars = [tk.StringVar(), tk.StringVar(), tk.StringVar(), tk.StringVar()]
         self._move_combos = []
         for i, var in enumerate(self._move_vars):
-            cb = ttk.Combobox(moves_box, textvariable=var, width=28, state="readonly", values=[])
-            cb.grid(row=i//2, column=i%2, sticky="ew", padx=2, pady=2)
+            cb = ttk.Combobox(fr_moves, textvariable=var, state="readonly", values=[], width=28)
+            cb.grid(row=i, column=0, sticky="ew", padx=4, pady=4)
             cb.bind("<<ComboboxSelected>>", self._on_move_changed)
             self._move_combos.append(cb)
 
-        r += 1
-
-        btns = ttk.Frame(frm); btns.grid(row=r, column=0, columnspan=4, sticky="e", pady=(8,0))
+        btns = ttk.Frame(root); btns.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8,0))
         ttk.Button(btns, text="Guardar", command=self._save).pack(side="right", padx=6)
         ttk.Button(btns, text="Cancelar", command=self.destroy).pack(side="right", padx=6)
 
@@ -753,14 +802,18 @@ class EditSetDialog(tk.Toplevel):
         except Exception:
             pass
 
-        for k,v in self.vars_evs.items():
+        for k,v in self.evs_vars.items():
             v.set(str(evs.get(k, 0)))
-        for k,v in self.vars_ivs.items():
+        for k,v in self.ivs_vars.items():
             v.set(str(ivs.get(k, 31)))
         # Construye el pool de movimientos disponibles para esta especie
-        self._moves_pool = self._build_moves_pool(sp.id)
+        self._moves_pool = self._build_moves_pool(sp.id) or []
 
-        # Asegura que los ya guardados aparezcan (por si no están en el pool)
+        # Garantiza que sea lista (por si algún helper devolviera set/tupla)
+        if not isinstance(self._moves_pool, list):
+            self._moves_pool = list(self._moves_pool)
+
+        # Asegura que movimientos ya guardados estén presentes en el pool
         for mv in (moves or []):
             if mv and mv not in self._moves_pool:
                 self._moves_pool.append(mv)
@@ -771,6 +824,28 @@ class EditSetDialog(tk.Toplevel):
 
         # Aplicar la lógica de filtrado (evitar duplicados entre combos)
         self._refresh_move_values()
+                
+        # Cargar sprite por especie
+        try: self._load_sprite(self.var_species.get())
+        except Exception: pass
+        
+        # --- Habilidades disponibles para la especie ---
+        try:
+            abilities = self._build_ability_pool(sp.id) or []
+        except Exception:
+            abilities = []
+        # asegura opción neutra
+        if "—" not in abilities:
+            abilities = ["—"] + abilities
+
+        # preselección con la habilidad ya guardada (si existe)
+        current_ability = (p.ability or "").strip()
+        if current_ability and current_ability not in abilities:
+            abilities = [current_ability] + abilities
+
+        self.cmb_ability["values"] = abilities
+        self.var_ability.set(current_ability or "—")
+
     # Fin de _load 
 
     # Guardar cambios
@@ -786,9 +861,11 @@ class EditSetDialog(tk.Toplevel):
         ability = (self.var_ability.get() or "").strip() or None
         tera = (self.var_tera.get() or "").strip() or None
 
-        evs = {k: max(0, min(252, _safe_int(v.get(), 0))) for k,v in self.vars_evs.items()}
-        ivs = {k: max(0, min(31,  _safe_int(v.get(), 31))) for k,v in self.vars_ivs.items()}
+        evs = {k: int(self.evs_vars[k].get() or 0) for k in ["HP","Atk","Def","SpA","SpD","Spe"]}
+        ivs = {k: int(self.ivs_vars[k].get() or 0) for k in ["HP","Atk","Def","SpA","SpD","Spe"]}
         moves = [v.get().strip() for v in self._move_vars if (v.get() or "").strip()][:4]
+        # guardar como antes en JSON
+
 
         # validaciones suaves
         ev_total = sum(evs.values())
@@ -888,23 +965,135 @@ class EditSetDialog(tk.Toplevel):
             cb["values"] = allowed
     # Fin de _refresh_move_values
 
-    # Construir pool de movimientos 'aprendibles' para la especie
+    # Construir pool de movimientos posibles para la especie
     def _build_moves_pool(self, species_id: int):
         """
-        Intenta construir un pool de movimientos 'aprendibles' para la especie.
-        Por ahora: unión de movimientos vistos en otros sets de la misma especie.
-        (Si más adelante conectas un 'learnset' real en BD, cámbialo aquí.)
+        Devuelve una lista ordenada de movimientos aprendibles para la especie.
+        1) Intenta PokeAPI: /pokemon/{slug} o /pokemon-species/{slug} -> default variety
+        2) Si falla, fallback: unión de movimientos observados en BD para esa especie.
+        Los nombres se formatean como 'Ice Beam' (title con espacios).
         """
+        import json as _json
+        import unicodedata
+
+        # --- helpers internos ---
+        def _ascii_slug(s: str) -> str:
+            # normaliza para endpoints pokeapi ('mr-mime', 'lycanroc-dusk', etc.)
+            s = (s or "").strip().lower()
+            s = s.replace("♀", "-f").replace("♂", "-m")
+            s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+            for ch in ["'", ".", ":", "(", ")", ",", "!", "?"]:
+                s = s.replace(ch, "")
+            s = s.replace(" ", "-").replace("_", "-")
+            # algunos alias comunes
+            ALIAS = {
+                "nidoran-f": "nidoran-f",
+                "nidoran-m": "nidoran-m",
+                "mr-mime": "mr-mime",
+                "farfetchd": "farfetchd",
+                "mime-jr": "mime-jr",
+                "type-null": "type-null",
+                "jangmo-o": "jangmo-o",
+                "hakamo-o": "hakamo-o",
+                "kommo-o": "kommo-o",
+            }
+            return ALIAS.get(s, s)
+
+        def _pretty_move(name_slug: str) -> str:
+            # 'ice-beam' -> 'Ice Beam' ; 'v-create' -> 'V Create'
+            return name_slug.replace("-", " ").title()
+
+        # --- obtener nombre de especie desde BD ---
         try:
             Session = self.services["Session"]; engine = self.services["engine"]
-        except Exception:
-            return []
-
-        import json as _json
-        moves_set = set()
-        try:
+            from ...db.models import Species
             with Session(engine) as s:
-                from ...db.models import PokemonSet
+                sp = s.get(Species, species_id)
+            species_name = getattr(sp, "name", "") or ""
+        except Exception:
+            species_name = ""
+
+        slug = _ascii_slug(species_name)
+        if not slug:
+            return self._build_moves_pool_fallback(species_id)
+
+        # --- caché en memoria ---
+        if slug in self._pokeapi_moves_cache:
+            return list(self._pokeapi_moves_cache[slug])
+
+        # --- intento PokeAPI ---
+        moves = None
+        try:
+            try:
+                import requests  # usar requests si está disponible
+            except Exception:
+                requests = None
+
+            def _get(url: str):
+                if requests:
+                    r = requests.get(url, timeout=5)
+                    r.raise_for_status()
+                    return r.json()
+                else:
+                    # fallback mínimo con urllib
+                    import urllib.request, json
+                    with urllib.request.urlopen(url, timeout=5) as resp:
+                        return json.loads(resp.read().decode("utf-8"))
+
+            base = "https://pokeapi.co/api/v2"
+
+            # 1) /pokemon/{slug}
+            data = None
+            try:
+                data = _get(f"{base}/pokemon/{slug}")
+            except Exception:
+                data = None
+
+            # 2) Si no existe, /pokemon-species/{slug} -> default variety
+            if not data:
+                spec = _get(f"{base}/pokemon-species/{slug}")
+                varieties = spec.get("varieties", []) if isinstance(spec, dict) else []
+                p_name = None
+                # prioriza 'is_default'
+                for v in varieties:
+                    if v.get("is_default") and v.get("pokemon", {}).get("name"):
+                        p_name = v["pokemon"]["name"]; break
+                if not p_name and varieties:
+                    p_name = varieties[0].get("pokemon", {}).get("name")
+                if p_name:
+                    data = _get(f"{base}/pokemon/{p_name}")
+
+            # 3) Parsear movimientos (sin filtrar por version_group de momento)
+            if data and isinstance(data, dict) and "moves" in data:
+                pool = set()
+                for m in data["moves"]:
+                    name_slug = m.get("move", {}).get("name")
+                    if name_slug:
+                        pool.add(_pretty_move(name_slug))
+                moves = sorted(pool, key=str.casefold)
+
+        except Exception:
+            moves = None  # fuerza fallback
+
+        # --- guardar en caché o usar fallback ---
+        if moves:
+            self._pokeapi_moves_cache[slug] = list(moves)
+            return moves
+
+        # fallback a unión de movimientos vistos en BD
+        return self._build_moves_pool_fallback(species_id)
+
+    # Fin de _build_moves_pool
+
+    # Fallback offline: unión de movimientos en sets guardados
+    def _build_moves_pool_fallback(self, species_id: int):
+        """Unión de movimientos observados en otros sets de la especie (fallback offline)."""
+        import json as _json
+        try:
+            Session = self.services["Session"]; engine = self.services["engine"]
+            from ...db.models import PokemonSet
+            moves_set = set()
+            with Session(engine) as s:
                 q = s.query(PokemonSet).filter(PokemonSet.species_id == species_id)
                 for row in q.all():
                     try:
@@ -915,9 +1104,255 @@ class EditSetDialog(tk.Toplevel):
                         mv = (mv or "").strip()
                         if mv:
                             moves_set.add(mv)
+            return sorted(moves_set, key=str.casefold)
         except Exception:
-            # si algo falla, devuelve al menos lista vacía en vez de romper el diálogo
             return []
+    # Fin de _build_moves_pool_fallback
 
-        return sorted(moves_set, key=str.casefold)
-    # Fin de _build_moves_pool
+    # Cargar sprite desde PokeAPI
+    def _species_slug(self, name: str) -> str:
+        """Normaliza el nombre a slug PokeAPI ('lycanroc-dusk', 'mr-mime', etc.)."""
+        import unicodedata
+        s = (name or "").strip().lower()
+        s = s.replace("♀", "-f").replace("♂", "-m")
+        s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+        for ch in ["'", ".", ":", "(", ")", ",", "!", "?"]:
+            s = s.replace(ch, "")
+        s = s.replace(" ", "-").replace("_", "-")
+        # aliases mínimos comunes
+        aliases = {
+            "mime-jr": "mime-jr", "mr-mime": "mr-mime",
+            "jangmo-o":"jangmo-o","hakamo-o":"hakamo-o","kommo-o":"kommo-o",
+            "type-null":"type-null", "nidoran-f":"nidoran-f", "nidoran-m":"nidoran-m",
+            "farfetchd":"farfetchd"
+        }
+        return aliases.get(s, s)
+    # Fin de _species_slug
+
+    # HTTP helpers
+    def _http_get_json(self, url: str):
+        try:
+            import requests
+            r = requests.get(url, timeout=6)
+            r.raise_for_status()
+            return r.json()
+        except Exception:
+            # fallback urllib
+            import urllib.request, json
+            with urllib.request.urlopen(url, timeout=6) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+    # Fin de _http_get_json
+
+    # HTTP helper para bytes (imágenes)
+    def _http_get_bytes(self, url: str) -> bytes:
+        try:
+            import requests
+            r = requests.get(url, timeout=6)
+            r.raise_for_status()
+            return r.content
+        except Exception:
+            import urllib.request
+            with urllib.request.urlopen(url, timeout=6) as resp:
+                return resp.read()
+    # Fin de _http_get_bytes
+    
+    # Cache de sprites en disco (opcional)
+    def _get_sprite_cache_dir(self):
+        import os
+        base = os.path.expanduser("~/.pokepy_cache/sprites")
+        os.makedirs(base, exist_ok=True)
+        return base
+    # Fin de _get_sprite_cache_dir
+    
+    # Path para sprite cacheado
+    def _sprite_cache_path(self, slug: str) -> str:
+        import os
+        return os.path.join(self._get_sprite_cache_dir(), f"{slug}.png")
+    # Fin de _sprite_cache_path
+
+    # Cargar y mostrar sprite
+    def _load_sprite(self, species_name: str):
+        """Muestra sprite con cache en memoria + disco (PokeAPI)."""
+        import io, base64, os
+        slug = self._species_slug(species_name)
+        if not slug or not hasattr(self, "sprite_label"):
+            return
+
+        # 1) cache en memoria
+        raw = self._sprite_mem_cache.get(slug)
+        if raw is None:
+            # 2) cache en disco
+            fpath = self._sprite_cache_path(slug)
+            if os.path.exists(fpath):
+                try:
+                    with open(fpath, "rb") as fh:
+                        raw = fh.read()
+                except Exception:
+                    raw = None
+
+            # 3) descargar si no hay cache
+            if raw is None:
+                data = None
+                # 3.1 /pokemon/{slug}
+                try:
+                    data = self._http_get_json(f"https://pokeapi.co/api/v2/pokemon/{slug}")
+                except Exception:
+                    data = None
+
+                # 3.2 fallback: /pokemon-species/{slug} -> variedad por defecto -> /pokemon/{name}
+                if not data:
+                    try:
+                        spec = self._http_get_json(f"https://pokeapi.co/api/v2/pokemon-species/{slug}")
+                        varieties = spec.get("varieties", []) if isinstance(spec, dict) else []
+                        p_name = None
+                        for v in varieties:
+                            if v.get("is_default") and v.get("pokemon", {}).get("name"):
+                                p_name = v["pokemon"]["name"]; break
+                        if not p_name and varieties:
+                            p_name = varieties[0].get("pokemon", {}).get("name")
+                        if p_name:
+                            data = self._http_get_json(f"https://pokeapi.co/api/v2/pokemon/{p_name}")
+                    except Exception:
+                        data = None
+
+                # 3.3 elegir URL de sprite
+                url = None
+                try:
+                    if data and isinstance(data, dict):
+                        spr = data.get("sprites", {}) or {}
+                        other = spr.get("other", {}) or {}
+                        url = (
+                            (other.get("official-artwork") or {}).get("front_default")
+                            or (other.get("home") or {}).get("front_default")
+                            or (other.get("showdown") or {}).get("front_default")
+                            or spr.get("front_default")
+                        )
+                except Exception:
+                    url = None
+
+                # 3.4 descargar imagen y guardar en disco
+                if url:
+                    try:
+                        raw = self._http_get_bytes(url)
+                        try:
+                            with open(fpath, "wb") as fh:
+                                fh.write(raw)
+                        except Exception:
+                            pass
+                    except Exception:
+                        raw = None
+
+            # guarda en cache de memoria
+            if raw is not None:
+                self._sprite_mem_cache[slug] = raw
+
+        # Mostrar en UI
+        if raw:
+            try:
+                if Image and ImageTk:
+                    im = Image.open(io.BytesIO(raw))
+                    im.thumbnail((128, 128))
+                    self._sprite_img = ImageTk.PhotoImage(im)
+                    self.sprite_label.configure(image=self._sprite_img, text="")
+                else:
+                    import tkinter as tk
+                    b64 = base64.b64encode(raw).decode("ascii")
+                    self._sprite_img = tk.PhotoImage(data=b64)
+                    self.sprite_label.configure(image=self._sprite_img, text="")
+            except Exception:
+                self.sprite_label.configure(text=species_name or "(sin sprite)", image="")
+                self._sprite_img = None
+        else:
+            self.sprite_label.configure(text=species_name or "(sin sprite)", image="")
+            self._sprite_img = None
+    # Fin de _load_sprite
+
+
+    # Construir pool de habilidades posibles para la especie
+    def _build_ability_pool(self, species_id: int):
+        """
+        Lista de habilidades aprendibles por especie.
+        1) PokeAPI /pokemon/{slug} (o variety por defecto)
+        2) Fallback: unión de habilidades vistas en BD para esa especie.
+        Devuelve nombres bonitos: 'Speed Boost', 'Intimidate', y marca ocultas '(Oculta)'.
+        """
+        import unicodedata
+        from ...db.models import Species, PokemonSet
+
+        # --- obtener nombre de especie ---
+        Session = self.services["Session"]; engine = self.services["engine"]
+        with Session(engine) as s:
+            sp = s.get(Species, species_id)
+        species_name = getattr(sp, "name", "") or ""
+        slug = self._species_slug(species_name)
+        if not slug:
+            return self._build_ability_pool_fallback(species_id)
+
+        # cache en memoria
+        if slug in self._pokeapi_abilities_cache:
+            return list(self._pokeapi_abilities_cache[slug])
+
+        def _pretty(name_slug: str) -> str:
+            # 'speed-boost' -> 'Speed Boost'
+            return (name_slug or "").replace("-", " ").title()
+
+        # --- intentar PokeAPI ---
+        abilities = []
+        try:
+            data = None
+            try:
+                data = self._http_get_json(f"https://pokeapi.co/api/v2/pokemon/{slug}")
+            except Exception:
+                # species -> variety por defecto -> pokemon
+                spec = self._http_get_json(f"https://pokeapi.co/api/v2/pokemon-species/{slug}")
+                varieties = spec.get("varieties", []) if isinstance(spec, dict) else []
+                p_name = None
+                for v in varieties:
+                    if v.get("is_default") and v.get("pokemon", {}).get("name"):
+                        p_name = v["pokemon"]["name"]; break
+                if not p_name and varieties:
+                    p_name = varieties[0].get("pokemon", {}).get("name")
+                if p_name:
+                    data = self._http_get_json(f"https://pokeapi.co/api/v2/pokemon/{p_name}")
+
+            if data and isinstance(data, dict) and "abilities" in data:
+                pool = []
+                seen = set()
+                for a in data["abilities"]:
+                    nm = a.get("ability", {}).get("name")
+                    if not nm: 
+                        continue
+                    label = _pretty(nm)
+                    if a.get("is_hidden"):
+                        label += " (Oculta)"
+                    key = label.lower()
+                    if key not in seen:
+                        seen.add(key)
+                        pool.append(label)
+                abilities = sorted(pool, key=str.casefold)
+        except Exception:
+            abilities = []
+
+        if abilities:
+            self._pokeapi_abilities_cache[slug] = list(abilities)
+            return abilities
+
+        # --- fallback BD ---
+        return self._build_ability_pool_fallback(species_id)
+    # Fin de _build_ability_pool
+
+    # Fallback offline: habilidades ya usadas en sets guardados
+    def _build_ability_pool_fallback(self, species_id: int):
+        """Fallback: habilidades ya usadas en otros sets de esta especie (BD)."""
+        import json as _json
+        from ...db.models import PokemonSet
+        Session = self.services["Session"]; engine = self.services["engine"]
+        seen = set()
+        with Session(engine) as s:
+            q = s.query(PokemonSet).filter(PokemonSet.species_id == species_id)
+            for row in q.all():
+                ab = (row.ability or "").strip()
+                if ab:
+                    seen.add(ab)
+        return sorted(seen, key=str.casefold)
+    # Fin de _build_ability_pool_fallback

@@ -264,5 +264,12 @@
     "power": 40,
     "damage_class": "special",
     "accuracy": 100
+  },
+  "U Turn": {
+    "name": "U Turn",
+    "type": "Bug",
+    "power": 70,
+    "damage_class": "physical",
+    "accuracy": 100
   }
 }
