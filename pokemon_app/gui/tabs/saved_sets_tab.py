@@ -13,6 +13,7 @@ NATURES = sorted(list({
     'Serious','Bashful','Docile','Hardy','Quirky'
 }))
 
+# Clase principal de la pestaña
 class SavedSetsTab:
     """
     Pestaña 'Sets Guardados'.
@@ -31,6 +32,9 @@ class SavedSetsTab:
         self.sort_dir = "asc"
         self.page_size = 50
         self.page = 0
+        
+        self._species_search_job = None
+
 
         self._build_ui()
 
@@ -46,6 +50,10 @@ class SavedSetsTab:
         ttk.Label(top, text="Especie:").grid(row=0, column=0, sticky="w", padx=4, pady=4)
         self.f_species = tk.StringVar()
         ttk.Entry(top, textvariable=self.f_species, width=20).grid(row=0, column=1, sticky="w", padx=2, pady=4)
+        # Búsqueda en vivo con debounce
+        self.f_species.trace_add("write", lambda *_: self._on_species_changed())
+        # Prueba por evento de teclado
+        #self.f_species.bind("<KeyRelease>", lambda e: self._on_species_changed())
 
         ttk.Label(top, text="Naturaleza:").grid(row=0, column=2, sticky="w", padx=8, pady=4)
         self.f_nature = tk.StringVar()
@@ -94,6 +102,9 @@ class SavedSetsTab:
         cols = ("id","species","nature","item","ability","tera","level","evs","ivs","moves","updated")
         self.tree = ttk.Treeview(self.master, columns=cols, show="headings", height=18, selectmode="browse")
         self.tree.pack(fill="both", expand=True, padx=8, pady=(0,8))
+        # Doble clic para editar
+        self.tree.bind("<Double-1>", self._on_tree_double_click, add="+")
+
 
         def _col(name, w, anchor="w"):
             self.tree.column(name, width=w, anchor=anchor)
@@ -575,7 +586,47 @@ class SavedSetsTab:
         self.f_tera.set(sel_tera if sel_tera in tera_list else "")
         self.f_item.set(sel_item if sel_item in item_list else "")
 
+    def _on_tree_double_click(self, event=None):
+        """Abre la pantalla de edición al hacer doble clic en una fila."""
+        try:
+            row = self.tree.identify_row(event.y) if event else None
+        except Exception:
+            row = None
+        if not row:
+            return  # doble clic en espacio vacío/encabezado: no hacer nada
 
+        # Asegurar selección/foco en la fila clickeada
+        try:
+            self.tree.selection_set(row)
+            self.tree.focus(row)
+        except Exception:
+            pass
+
+        # Reusar la acción existente
+        self.on_edit()
+        
+    def _on_species_changed(self):
+        # cancelar job anterior (si existe)
+        if getattr(self, "_species_search_job", None):
+            try:
+                self.master.after_cancel(self._species_search_job)
+            except Exception:
+                pass
+            self._species_search_job = None
+
+        # programar una búsqueda tras 250 ms usando el mismo widget (self.master)
+        self._species_search_job = self.master.after(250, self._do_species_live_search)
+
+
+    def _do_species_live_search(self):
+        self._species_search_job = None
+        # reiniciar a primera página y refrescar
+        self.page = 0
+        self.refresh()
+        self._reload_filter_options()
+
+
+#Clase para editar un set
 class EditSetDialog(tk.Toplevel):
     """Diálogo para editar un PokemonSet completo (nivel, naturaleza, item, ability, tera, EV/IV, moves)."""
     def __init__(self, master, services: dict, set_id: int, on_saved=None):
@@ -651,9 +702,23 @@ class EditSetDialog(tk.Toplevel):
             if i%3==2: r+=1
         if i%3!=2: r+=1
 
-        ttk.Label(frm, text="Moves (uno por línea, máx 4):").grid(row=r, column=0, sticky="nw", padx=4, pady=(8,4))
-        self.txt_moves = tk.Text(frm, width=36, height=6)
-        self.txt_moves.grid(row=r, column=1, columnspan=3, sticky="w", pady=(8,4)); r+=1
+        ttk.Label(frm, text="Movimientos (máx 4):").grid(row=r, column=0, sticky="ne", padx=4, pady=(8,4))
+
+        moves_box = ttk.Frame(frm)
+        moves_box.grid(row=r, column=1, columnspan=3, sticky="ew", pady=(8,4))
+        moves_box.columnconfigure(0, weight=1)
+        moves_box.columnconfigure(1, weight=1)
+
+        # 4 combobox de movimientos
+        self._move_vars = [tk.StringVar(), tk.StringVar(), tk.StringVar(), tk.StringVar()]
+        self._move_combos = []
+        for i, var in enumerate(self._move_vars):
+            cb = ttk.Combobox(moves_box, textvariable=var, width=28, state="readonly", values=[])
+            cb.grid(row=i//2, column=i%2, sticky="ew", padx=2, pady=2)
+            cb.bind("<<ComboboxSelected>>", self._on_move_changed)
+            self._move_combos.append(cb)
+
+        r += 1
 
         btns = ttk.Frame(frm); btns.grid(row=r, column=0, columnspan=4, sticky="e", pady=(8,0))
         ttk.Button(btns, text="Guardar", command=self._save).pack(side="right", padx=6)
@@ -692,9 +757,23 @@ class EditSetDialog(tk.Toplevel):
             v.set(str(evs.get(k, 0)))
         for k,v in self.vars_ivs.items():
             v.set(str(ivs.get(k, 31)))
-        self.txt_moves.delete("1.0","end")
-        self.txt_moves.insert("1.0", "\n".join(moves[:4]))
+        # Construye el pool de movimientos disponibles para esta especie
+        self._moves_pool = self._build_moves_pool(sp.id)
 
+        # Asegura que los ya guardados aparezcan (por si no están en el pool)
+        for mv in (moves or []):
+            if mv and mv not in self._moves_pool:
+                self._moves_pool.append(mv)
+
+        # Preseleccionar los 4 (o menos) movimientos existentes
+        for i in range(4):
+            self._move_vars[i].set(moves[i] if i < len(moves) else "")
+
+        # Aplicar la lógica de filtrado (evitar duplicados entre combos)
+        self._refresh_move_values()
+    # Fin de _load 
+
+    # Guardar cambios
     def _save(self):
         # recolectar y validar
         def _safe_int(s, default=0):
@@ -709,7 +788,7 @@ class EditSetDialog(tk.Toplevel):
 
         evs = {k: max(0, min(252, _safe_int(v.get(), 0))) for k,v in self.vars_evs.items()}
         ivs = {k: max(0, min(31,  _safe_int(v.get(), 31))) for k,v in self.vars_ivs.items()}
-        moves = [ln.strip() for ln in self.txt_moves.get("1.0","end").splitlines() if ln.strip()][:4]
+        moves = [v.get().strip() for v in self._move_vars if (v.get() or "").strip()][:4]
 
         # validaciones suaves
         ev_total = sum(evs.values())
@@ -755,3 +834,90 @@ class EditSetDialog(tk.Toplevel):
             parent = None
         # Lo fácil: pide a la pestaña que recargue opciones antes/después del refresh que ya llamas
         self.destroy()
+    # Fin de _save
+        
+    # Lógica de movimientos: evitar duplicados entre los 4 combos    
+    def _on_move_changed(self, event=None):
+        """
+        Mantiene movimientos únicos: si el usuario elige un movimiento ya elegido
+        en otro combo, lo limpia de ese otro combo. Luego recalcula los 'values'.
+        """
+        try:
+            widget = event.widget if event else None
+            chosen = (widget.get() or "").strip() if widget else ""
+        except Exception:
+            widget, chosen = None, ""
+
+        if chosen:
+            # Unicidad: si otro combo ya tenía el mismo movimiento, lo vaciamos
+            for cb, var in zip(self._move_combos, self._move_vars):
+                if cb is not widget and (var.get() or "").strip().lower() == chosen.lower():
+                    var.set("")
+
+        self._refresh_move_values()
+    # Fin de _on_move_changed
+
+    # Refrescar las listas de opciones en los combos de movimientos
+    def _refresh_move_values(self):
+        """
+        Recalcula la lista de opciones para cada combo, excluyendo lo ya elegido
+        en los otros combos. Conserva el valor actual si está seteado.
+        """
+        if not hasattr(self, "_moves_pool"):
+            self._moves_pool = []
+
+        selected = [ (v.get() or "").strip() for v in self._move_vars ]
+        selected_lower = [ s.lower() for s in selected if s ]
+
+        for i, (cb, var) in enumerate(zip(self._move_combos, self._move_vars)):
+            current = (var.get() or "").strip()
+            current_lower = current.lower()
+
+            # No permitir duplicados: excluye los elegidos por otros combos
+            used_others = set(selected_lower)
+            if current:
+                # deja pasar el propio valor actual
+                used_others.discard(current_lower)
+
+            allowed = [m for m in self._moves_pool if m.lower() not in used_others]
+
+            # Si el actual no está en la lista (p. ej., porque no está en pool), inclúyelo al inicio
+            if current and current not in allowed:
+                allowed = [current] + allowed
+
+            cb["values"] = allowed
+    # Fin de _refresh_move_values
+
+    # Construir pool de movimientos 'aprendibles' para la especie
+    def _build_moves_pool(self, species_id: int):
+        """
+        Intenta construir un pool de movimientos 'aprendibles' para la especie.
+        Por ahora: unión de movimientos vistos en otros sets de la misma especie.
+        (Si más adelante conectas un 'learnset' real en BD, cámbialo aquí.)
+        """
+        try:
+            Session = self.services["Session"]; engine = self.services["engine"]
+        except Exception:
+            return []
+
+        import json as _json
+        moves_set = set()
+        try:
+            with Session(engine) as s:
+                from ...db.models import PokemonSet
+                q = s.query(PokemonSet).filter(PokemonSet.species_id == species_id)
+                for row in q.all():
+                    try:
+                        mv_list = _json.loads(row.moves_json) or []
+                    except Exception:
+                        mv_list = []
+                    for mv in mv_list:
+                        mv = (mv or "").strip()
+                        if mv:
+                            moves_set.add(mv)
+        except Exception:
+            # si algo falla, devuelve al menos lista vacía en vez de romper el diálogo
+            return []
+
+        return sorted(moves_set, key=str.casefold)
+    # Fin de _build_moves_pool

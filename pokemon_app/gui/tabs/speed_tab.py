@@ -24,6 +24,11 @@ class SpeedTab:
         # estado de ordenamiento
         self.speed_sort_by = "speed"
         self.speed_sort_dir = "desc"
+        
+        self._speed_search_job = None
+        self._speed_autoload_job = None
+        self._speed_silent = False
+
 
         self._build_ui()
 
@@ -39,11 +44,16 @@ class SpeedTab:
         self.s_filter = tk.StringVar()
         ttk.Entry(frm_sf, textvariable=self.s_filter, width=20)\
             .grid(row=0, column=1, padx=4)
+        # Búsqueda en vivo por especie (debounce)
+        self.s_filter.trace_add("write", lambda *_: self._on_speed_filter_changed())
+
 
         ttk.Label(frm_sf, text="Naturaleza:").grid(row=0, column=2, sticky="w")
         self.s_nat = tk.StringVar()
         ttk.Combobox(frm_sf, textvariable=self.s_nat, width=14, values=NATURES, state="readonly")\
             .grid(row=0, column=3, padx=4)
+        self.s_nat.trace_add("write", lambda *_: self._on_speed_filter_changed())
+        # o: combobox.bind("<<ComboboxSelected>>", lambda e: self._on_speed_filter_changed())
 
         ttk.Label(frm_sf, text="Vel. min/max:").grid(row=0, column=4, sticky="w")
         self.s_speed_min = tk.StringVar(); self.s_speed_max = tk.StringVar()
@@ -51,9 +61,11 @@ class SpeedTab:
             .grid(row=0, column=5, padx=(0,2))
         ttk.Entry(frm_sf, textvariable=self.s_speed_max, width=7)\
             .grid(row=0, column=6, padx=(2,4))
+        self.s_speed_min.trace_add("write", lambda *_: self._on_speed_filter_changed())
+        self.s_speed_max.trace_add("write", lambda *_: self._on_speed_filter_changed())
 
-        ttk.Button(frm_sf, text="Actualizar", command=self.refresh)\
-            .grid(row=0, column=7, padx=6)
+        #ttk.Button(frm_sf, text="Actualizar", command=self.refresh)\
+        #    .grid(row=0, column=7, padx=6)
         ttk.Button(frm_sf, text="Limpiar", command=self.clear_speed_filters)\
             .grid(row=0, column=8)
 
@@ -100,14 +112,17 @@ class SpeedTab:
         ttk.Combobox(frm_mod, textvariable=self.s_stage, width=5,
                      values=[str(i) for i in range(-6, 7)], state="readonly")\
             .grid(row=0, column=1, padx=4, pady=4)
+        self.s_stage.trace_add("write", lambda *_: self._on_speed_filter_changed())
 
         self.s_tailwind = tk.BooleanVar(value=False)
         ttk.Checkbutton(frm_mod, text="Tailwind (x2)", variable=self.s_tailwind)\
             .grid(row=0, column=2, padx=8, pady=4)
+        self.s_tailwind.trace_add("write", lambda *_: self._on_speed_filter_changed())
 
         self.s_para = tk.BooleanVar(value=False)
         ttk.Checkbutton(frm_mod, text="Parálisis (x0.5)", variable=self.s_para)\
             .grid(row=0, column=3, padx=8, pady=4)
+        self.s_para.trace_add("write", lambda *_: self._on_speed_filter_changed())
 
         ttk.Label(frm_mod, text="Habilidad/efecto:").grid(row=0, column=5, sticky="w", padx=8, pady=4)
         self.s_ability = tk.StringVar(value="—")
@@ -116,21 +131,43 @@ class SpeedTab:
                              "Sand Rush (Tormenta Arena)","Slush Rush (Nieve)",
                              "Unburden (Objeto consumido)"])\
             .grid(row=0, column=6, padx=4, pady=4)
+        self.s_ability.trace_add("write", lambda *_: self._on_speed_filter_changed())
 
-        ttk.Button(frm_mod, text="Recalcular", command=self.refresh)\
-            .grid(row=0, column=7, padx=8)
+        #ttk.Button(frm_mod, text="Recalcular", command=self.refresh)\
+        #    .grid(row=0, column=7, padx=8)
 
         # binds útiles
         self.speed_tree.bind("<Double-1>", lambda e: self.refresh())  # opcional
         for w in frm_sf.winfo_children():
             if isinstance(w, (ttk.Entry, ttk.Combobox)):
                 w.bind("<Return>", lambda e: self.refresh())
+                
+        # Carga inicial apenas se construye la pestaña
+        self.master.after(0, self.refresh)
+
+        # Al cambiar de pestaña en el Notebook, recargar si ésta queda visible
+        try:
+            nb = self.master.nametowidget(self.master.winfo_parent())  # Notebook contenedor
+            nb.bind("<<NotebookTabChanged>>", self._on_speed_tab_changed, add="+")
+        except Exception:
+            pass
+
+        # Fallback: si vuelve a tomar foco, programa autoload (evita spam usando debounce)
+        self.master.bind("<FocusIn>", lambda e: self._speed_autoload())
+
 
     # ---------- lógica ----------
     def clear_speed_filters(self):
-        for var in (self.s_filter, self.s_nat, self.s_speed_min, self.s_speed_max):
-            var.set("")
+        self._speed_silent = True
+        try:
+            self.s_filter.set("")
+            self.s_nat.set("")
+            self.s_speed_min.set("")
+            self.s_speed_max.set("")
+        finally:
+            self._speed_silent = False
         self.refresh()
+
 
     def on_sort_speed(self, col: str):
         if self.speed_sort_by == col:
@@ -229,21 +266,27 @@ class SpeedTab:
             stage_mult    = self._stage_multiplier(self.s_stage.get())
             tailwind_mult = 2.0 if self.s_tailwind.get() else 1.0
             para_mult     = 0.5 if self.s_para.get() else 1.0
-            ability_mult  = self._ability_speed_mult(self.s_ability.get())
-            item_mult     = self._item_speed_mult(pset.item, sp.name)
-            climate_mult  = self._climate_ability_mult(self.s_ability.get(), getattr(pset, "ability", None))
 
-            # Habilidad climática: condicional por Pokémon
-            climate_labels = {'Swift Swim (Lluvia)', 'Chlorophyll (Sol)', 'Sand Rush (Tormenta Arena)', 'Slush Rush (Nieve)'}
-            ability_effective = 1.0 if (self.s_ability.get() in climate_labels) else ability_mult
+            item_mult    = self._item_speed_mult(pset.item, sp.name)
+            selected_abl = self.s_ability.get()
+            row_ability  = getattr(pset, "ability", None)
 
-            # Vel (Item): ítem + clima por fila  ← (ajuste #2)
+            # Clima SOLO si la fila tiene la habilidad climática correspondiente
+            climate_mult   = self._climate_ability_mult(selected_abl, row_ability)
+
+            # Unburden SOLO si la fila realmente tiene Unburden/Liviano
+            unburden_mult  = self._unburden_speed_mult(selected_abl, row_ability)
+
+            # (opcional) otras habilidades globales → 1.0 por defecto
+            # ability_mult_global = 1.0
+
+            # Velocidad con ítem (para tu columna 'Vel (Item)')
             speed_item = int(calc_spe * item_mult * climate_mult)
 
-            # Vel (Final): incluye ítem (no hay scarf_mult)
+            # Velocidad final por fila (sin aplicar Unburden globalmente)
             eff_speed = int(
                 calc_spe * stage_mult * tailwind_mult * para_mult
-                * ability_effective * climate_mult * item_mult
+                * item_mult * climate_mult * unburden_mult
             )
 
             items.append({
@@ -328,6 +371,17 @@ class SpeedTab:
         if target and ab == target:
             return 2.0
         return 1.0
+
+    def _unburden_speed_mult(self, selected_label: str, row_ability: str | None) -> float:
+        """
+        Aplica x2 SOLO si el selector global está en 'Unburden (Objeto consumido)'
+        y la fila tiene efectivamente la habilidad Unburden/Liviano.
+        """
+        sel = (selected_label or "").strip().lower()
+        abl = (row_ability or "").strip().lower()
+        if sel.startswith("unburden"):
+            return 2.0 if abl in {"unburden", "liviano"} else 1.0
+        return 1.0
     
     def on_speed_click(self, event):
         tree = self.speed_tree
@@ -350,3 +404,46 @@ class SpeedTab:
         # refresca para redibujar icono y reinsertar fijados aunque el filtro los excluya
         self.refresh()
 
+    # Búsqueda en vivo con debounce
+    def _on_speed_filter_changed(self):
+        # evita recursión infinita
+        if getattr(self, "_speed_silent", False):
+            return
+
+        # cancela timer previo
+        if getattr(self, "_speed_search_job", None):
+            try:
+                self.master.after_cancel(self._speed_search_job)
+            except Exception:
+                pass
+            self._speed_search_job = None
+        # agenda refresh en 250 ms
+        self._speed_search_job = self.master.after(250, self._do_speed_live_search)
+
+    # Ejecuta búsqueda en vivo
+    def _do_speed_live_search(self):
+        self._speed_search_job = None
+        self.refresh()  # ya respeta species_like con %...%
+
+    # Autoload con debounce al cambiar de pestaña o foco
+    def _speed_autoload(self, delay_ms: int = 50):
+        """Programar un refresh con debounce para evitar llamadas múltiples."""
+        if getattr(self, "_speed_autoload_job", None):
+            try:
+                self.master.after_cancel(self._speed_autoload_job)
+            except Exception:
+                pass
+            self._speed_autoload_job = None
+        self._speed_autoload_job = self.master.after(delay_ms, self.refresh)
+
+    # Evento al cambiar de pestaña en el Notebook
+    def _on_speed_tab_changed(self, event=None):
+        """Si esta pestaña quedó visible en el Notebook, recargar registros."""
+        nb = event.widget
+        try:
+            current = nb.nametowidget(nb.select())
+        except Exception:
+            return
+        if current is self.master:
+            # Carga inmediata al entrar en la pestaña
+            self._speed_autoload(delay_ms=0)

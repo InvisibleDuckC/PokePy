@@ -257,5 +257,12 @@
     "power": 120,
     "damage_class": "special",
     "accuracy": 100
+  },
+  "Vacuum Wave": {
+    "name": "Vacuum Wave",
+    "type": "Fighting",
+    "power": 40,
+    "damage_class": "special",
+    "accuracy": 100
   }
 }
