@@ -176,7 +176,7 @@ class PokemonApp(ttk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.master.title("Pokémon Calc - Desktop (ttk)")
-        self.master.geometry("1300x850")
+        self.master.geometry("1500x850")
         self.pack(fill="both", expand=True)
         
         # Inicializa logging global

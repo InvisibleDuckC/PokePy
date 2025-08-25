@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+import tkinter.font as tkfont
 import json as _json
 from datetime import datetime
 # --- para sprite desde PokeAPI ---
@@ -107,7 +108,7 @@ class SavedSetsTab:
 
         # Tabla
         cols = ("id","species","nature","item","ability","tera","level","evs","ivs","moves","updated")
-        self.tree = ttk.Treeview(self.master, columns=cols, show="headings", height=18, selectmode="browse")
+        self.tree = ttk.Treeview(self.master, columns=cols, show="headings", height=18, selectmode="browse", style="Poke.Treeview")
         self.tree.pack(fill="both", expand=True, padx=8, pady=(0,8))
         # Doble clic para editar
         self.tree.bind("<Double-1>", self._on_tree_double_click, add="+")
@@ -115,22 +116,21 @@ class SavedSetsTab:
 
         def _col(name, w, anchor="w"):
             self.tree.column(name, width=w, anchor=anchor)
-        _col("id",      25, "e")
+        _col("id",      23, "e")
         _col("species", 150)
-        _col("nature",  80)
-        _col("item",    120)
+        _col("nature",  78)
+        _col("item",    115)
         _col("ability", 120)
-        _col("tera",    65)
-        _col("level",   40, "e")
-        _col("evs",     160)
-        _col("ivs",     160)
-        _col("moves",   260)
-        _col("updated", 140)
+        _col("tera",    63)
+        _col("level",   36, "e")
+        _col("evs",     280)
+        _col("ivs",     270)
+        _col("moves",   285)
 
         for c, label in [
             ("id","ID"),("species","Especie"),("nature","Naturaleza"),
             ("item","Item"),("ability","Habilidad"),("tera","Tera"),
-            ("level","Lvl"),("evs","EVs"),("ivs","IVs"),("moves","Movs"),("updated","Actualizado")
+            ("level","Lvl"),("evs","EVs"),("ivs","IVs"),("moves","Movs"),
         ]:
             self.tree.heading(c, text=label, command=lambda col=c: self.on_sort(col))
 
@@ -631,6 +631,58 @@ class SavedSetsTab:
         self.page = 0
         self.refresh()
         self._reload_filter_options()
+        
+    def apply_treeview_style(root):
+        style = ttk.Style(root)
+
+        # Elige un theme base disponible: 'vista' (Windows), 'clam' (cross), 'aqua' (macOS)
+        try:
+            style.theme_use("vista")
+        except Exception:
+            pass
+
+        # Fuentes
+        font_row = tkfont.nametofont("TkDefaultFont").copy()
+        font_row.configure(size=10)
+        font_head = tkfont.nametofont("TkHeadingFont").copy()
+        font_head.configure(size=10, weight="bold")
+
+        # Estilo filas
+        style.configure(
+            "Poke.Treeview",
+            font=font_row,
+            rowheight=24,              # altura de fila
+            background="#ffffff",
+            fieldbackground="#ffffff", # fondo del área
+            foreground="#222222",
+            bordercolor="#dddddd",
+            lightcolor="#eeeeee",
+            darkcolor="#dddddd"
+        )
+
+        # Selección más visible
+        style.map(
+            "Poke.Treeview",
+            background=[("selected", "#e6f2ff")],
+            foreground=[("selected", "#0b3d91")]
+        )
+
+        # Encabezados
+        style.configure(
+            "Poke.Treeview.Heading",
+            font=font_head,
+            background="#f5f5f5",
+            foreground="#333333",
+            bordercolor="#dddddd"
+        )
+        style.map(
+            "Poke.Treeview.Heading",
+            background=[("active", "#ececec")]
+        )
+
+        # (Opcional) quitar el borde punteado de focus en celdas
+        style.layout("Poke.Treeview", style.layout("Treeview"))
+
 
 
 #Clase para editar un set
