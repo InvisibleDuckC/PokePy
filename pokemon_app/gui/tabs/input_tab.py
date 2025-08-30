@@ -5,6 +5,7 @@ import os
 from tkinter import ttk, messagebox
 from types import SimpleNamespace
 from pokemon_app.utils.species_normalize import normalize_species_name
+from pokemon_app.gui.ui.treeview_kit import set_style, apply_zebra, insert_with_zebra, autosize_columns, update_sort_arrows
 
 
 class InputTab(ttk.Frame):
@@ -102,6 +103,8 @@ class InputTab(ttk.Frame):
         self.related_tree.heading("evs",     text="EVs") 
         self.related_tree.heading("moves",   text="Movimientos")
 
+        set_style(self.related_tree)
+        apply_zebra(self.related_tree)
 
         # Botones
         bot = ttk.Frame(self)
@@ -453,10 +456,7 @@ class InputTab(ttk.Frame):
                 evs_dict = {}
             evs_str = _fmt_evs(evs_dict)
 
-            self.related_tree.insert(
-                "", "end",
-                iid=str(pset.id),
-                values=(
+            insert_with_zebra(self.related_tree, values=(
                     pset.id,
                     pset.level,
                     pset.nature or "—",
@@ -464,7 +464,5 @@ class InputTab(ttk.Frame):
                     pset.ability or "—",
                     evs_str,                 # << NUEVO campo EVs
                     moves or "—",
-                ),
-            )
-
+                ),)
 

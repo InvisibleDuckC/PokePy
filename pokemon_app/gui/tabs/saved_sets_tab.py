@@ -9,6 +9,9 @@ try:
     from PIL import Image, ImageTk   # recomendado
 except Exception:
     Image = ImageTk = None
+    
+from pokemon_app.gui.ui.treeview_kit import set_style, apply_zebra, insert_with_zebra, autosize_columns, update_sort_arrows, attach_right_click_menu
+
 
 
 # Naturalezas por si quieres un combo (opcional)
@@ -112,6 +115,8 @@ class SavedSetsTab:
         self.tree.pack(fill="both", expand=True, padx=8, pady=(0,8))
         # Doble clic para editar
         self.tree.bind("<Double-1>", self._on_tree_double_click, add="+")
+        set_style(self.tree)
+        apply_zebra(self.tree)
 
 
         def _col(name, w, anchor="w"):
@@ -313,10 +318,8 @@ class SavedSetsTab:
                 except Exception:
                     updated_txt = str(pset.updated_at)
 
-            self.tree.insert(
-                "", "end",
-                iid=str(pset.id),
-                values=(
+            #self.tree.insert("", "end",iid=str(pset.id),values=(pset.id,sp.name,pset.nature or "—",pset.item or "—",pset.ability or "—",pset.tera_type or "—",pset.level,evs_str,ivs_str,moves_str,updated_txt))
+            insert_with_zebra(self.tree, values=(
                     pset.id,
                     sp.name,
                     pset.nature or "—",
@@ -328,8 +331,7 @@ class SavedSetsTab:
                     ivs_str,
                     moves_str,
                     updated_txt
-                )
-            )
+                ))
 
         total_txt = ""
         if "count_sets" in self.services:
@@ -343,6 +345,7 @@ class SavedSetsTab:
                 except Exception:
                     total_txt = ""
         self.lbl_page.config(text=f"Página {self.page + 1}{total_txt}")
+        autosize_columns(self.tree)
 
 
     def _selected_set_id(self) -> int | None:

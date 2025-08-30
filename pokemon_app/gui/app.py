@@ -15,7 +15,7 @@ from pokemon_app.services.types import type_effectiveness
 from pokemon_app.db.base import engine
 from pokemon_app.db.repository import init_db, save_pokemon_set, list_sets, count_sets, delete_sets, get_set, update_set
 from pokemon_app.db.models import Species, PokemonSet
-
+from pokemon_app.gui.ui.treeview_kit import apply_style
 from pokemon_app.gui.tabs.speed_tab import SpeedTab
 from pokemon_app.gui.tabs.saved_sets_tab import SavedSetsTab
 from pokemon_app.gui.tabs.damage_tab import DamageTab
@@ -277,5 +277,6 @@ class PokemonApp(ttk.Frame):
 
 def run():
     root = tk.Tk()
+    apply_style(root, variant="light")  # o "dark"
     app = PokemonApp(master=root)
     app.mainloop()

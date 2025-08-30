@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from pokemon_app.utils.species_normalize import normalize_species_name
+from pokemon_app.gui.ui.treeview_kit import set_style, apply_zebra, insert_with_zebra, autosize_columns, update_sort_arrows
+
 
 NATURES = sorted(list({
     'Adamant','Lonely','Brave','Naughty',
@@ -95,6 +97,10 @@ class SpeedTab:
         self.speed_tree.heading("calc",      text="Vel (Base)",    command=lambda c="calc":    self.on_sort_speed(c))
         self.speed_tree.heading("speed_item", text="Vel (Item)",  command=lambda c="speed_item": self.on_sort_speed(c))
         self.speed_tree.heading("speed",     text="Vel (Final)",   command=lambda c="speed":   self.on_sort_speed(c))
+
+        set_style(self.speed_tree)
+        apply_zebra(self.speed_tree)
+        autosize_columns(self.speed_tree)
 
         # Estado para pines + cache de filas fijadas
         self.pinned_ids   = getattr(self, "pinned_ids", set())
@@ -326,13 +332,17 @@ class SpeedTab:
         reverse = (self.speed_sort_dir == "desc")
         items.sort(key=lambda r: (r[key] if r[key] is not None else -999999), reverse=reverse)
 
-        # Pintar  ← (ajuste #1: usar iid estable)
         for r in items:
-            self.speed_tree.insert(
-                "", "end",
-                iid=r["id"],
-                values=(r["pin"], r["species"], r["item"], r["nature"], r["base_stat"], r["iv"], r["ev"], r["calc"], r.get("speed_item"), r["speed"])
-            )
+            insert_with_zebra(self.speed_tree, values=(r["pin"], r["species"], r["item"], r["nature"], 
+                        r["base_stat"], r["iv"], r["ev"], r["calc"], 
+                        r.get("speed_item"), r["speed"]
+                        ))
+
+        # Pintar  ← (ajuste #1: usar iid estable)
+        #for r in items:
+        #    self.speed_tree.insert("", "end", iid=r["id"], values=(r["pin"], r["species"], r["item"], r["nature"], r["base_stat"], r["iv"], r["ev"], r["calc"], r.get("speed_item"), r["speed"]))
+
+
 
 
     def _item_speed_mult(self, item_name: str, species_name: str) -> float:

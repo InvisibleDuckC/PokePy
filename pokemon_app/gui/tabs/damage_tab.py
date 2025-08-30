@@ -3,6 +3,7 @@ import json as _json
 import tkinter as tk
 from tkinter import ttk, messagebox
 from pokemon_app.utils.species_normalize import normalize_species_name
+from pokemon_app.gui.ui.treeview_kit import apply_damage_tags, insert_with_zebra, set_style, apply_zebra
 
 
 # Berries de resistencia por tipo
@@ -216,6 +217,9 @@ class DamageTab:
         cols = ("target","hp","def_base","def_ev","def_used","def_item","xef","xmod","min","max","min_pct","max_pct","ohko")
         self.dmg_tree = ttk.Treeview(nb_container, columns=cols, show="headings", height=18)
         self.dmg_tree.pack(fill="both", expand=True, padx=8, pady=(0,8))
+        apply_damage_tags(self.dmg_tree)
+        set_style(self.dmg_tree)
+        apply_zebra(self.dmg_tree)
         
         # Resumen de KOs
         sum_bar = ttk.LabelFrame(nb_container, text="Resumen KO")
@@ -666,6 +670,17 @@ class DamageTab:
                     cnt_pos += 1
                 else:
                     cnt_no += 1
+                    
+                import math
+                n_best = 999 if tdmax <= 0 else math.ceil(hp_stat / tdmax)         # mejor caso
+                n_worst = 999 if tdmin <= 0 else math.ceil(hp_stat / max(1, tdmin)) # peor caso
+
+                if n_best <= 1:
+                    ko_label = "OHKO"
+                elif n_best == n_worst:
+                    ko_label = f"{n_best}HKO"
+                else:
+                    ko_label = f"{n_best}–{n_worst}HKO"
 
                 def_base_stat = int(sp.base_def if is_phys else sp.base_spd)
                 def_ev_val = int(D_evs.get("Def" if is_phys else "SpD", 0))
@@ -684,7 +699,8 @@ class DamageTab:
                     "max": dmax,
                     "min_pct": min_pct,
                     "max_pct": max_pct,
-                    "ohko": ohko,
+                    "ko": ko_label,     # <— etiqueta visible
+                    "ko_best": n_best,  # <— para ordenar / tags
                 })
 
             # ordenar
@@ -697,6 +713,9 @@ class DamageTab:
                     except Exception: return 1.0
                 if key == "xmod":
                     return r.get("xmod_val", 1.0)
+                if key == "ko":
+                    return r.get("ko_best", 99)
+
                 return r.get(key, -999999) if r.get(key) is not None else -999999
 
             items.sort(key=sort_key, reverse=reverse)
@@ -706,14 +725,23 @@ class DamageTab:
             self.d_cnt_pos.set(str(cnt_pos))
             self.d_cnt_no.set(str(cnt_no))
             self.d_cnt_total.set(str(total))
+            
+            
 
             # pintar
             for r in items:
-                self.dmg_tree.insert(
-                    "", "end",
-                    values=(r["target"], r["hp"], r["def_base"], r["def_ev"], r["def_used"], r["def_item"],
-                            r["xef"], r["xmod"], r["min"], r["max"], r["min_pct"], r["max_pct"], r["ohko"])
-                )
+                tags = []
+                kb = r.get("ko_best", 99)
+                if kb <= 1:
+                    tags.append("ko_ohko")
+                elif kb == 2:
+                    tags.append("ko_2hko")
+                elif kb >= 4:
+                    tags.append("ko_4hko")
+
+                insert_with_zebra(self.dmg_tree, values=(r["target"], r["hp"], r["def_base"], r["def_ev"], r["def_used"], r["def_item"],
+                            r["xef"], r["xmod"], r["min"], r["max"], r["min_pct"], r["max_pct"], r["ko"], r["ko_best"]), tags=tuple(tags))
+
         finally:
             # ocultar loader siempre, incluso si hay excepción
             self._hide_loader()
