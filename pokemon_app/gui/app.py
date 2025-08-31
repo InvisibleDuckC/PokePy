@@ -4,6 +4,8 @@ from datetime import datetime
 import json
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, Spinbox
+from pathlib import Path
+
 
 from sqlalchemy.orm import Session
 
@@ -11,7 +13,8 @@ from pokemon_app.controllers.consulta_datos_controller import ConsultarDatosCont
 from pokemon_app.parsing.showdown_parser import parse_showdown_text
 from pokemon_app.services.calculations import compute_stats, DEFAULT_IV
 from pokemon_app.services.species_provider import ensure_species_in_json
-from pokemon_app.services.types import type_effectiveness
+from pokemon_app.services.types import type_effectiveness, ALL_TYPES
+from pokemon_app.services import battle_calc as bc
 from pokemon_app.db.base import engine
 from pokemon_app.db.repository import init_db, save_pokemon_set, list_sets, count_sets, delete_sets, get_set, update_set
 from pokemon_app.db.models import Species, PokemonSet
@@ -20,6 +23,7 @@ from pokemon_app.gui.tabs.speed_tab import SpeedTab
 from pokemon_app.gui.tabs.saved_sets_tab import SavedSetsTab
 from pokemon_app.gui.tabs.damage_tab import DamageTab
 from pokemon_app.gui.tabs.input_tab import InputTab
+from pokemon_app.gui.tabs.defense_tab import DefenseTab
 
 from pokemon_app.utils.logging_setup import setup_logging
 
@@ -149,7 +153,44 @@ services = {
     "parse_showdown_text": parse_showdown_text,
     "ensure_species_in_json": ensure_species_in_json,
     "save_pokemon_set": save_pokemon_set,
+    "terrain_xmod": bc.terrain_xmod,
+    "screen_multiplier": bc.screen_multiplier,
+    "weather_move_multiplier": bc.weather_move_multiplier,
+    "defender_stat_weather_boost": bc.defender_stat_weather_boost,
+    "tera_stab_multiplier": bc.tera_stab_multiplier,
+    "attacker_item_multiplier_auto": bc.attacker_item_multiplier_auto,
+    "defender_item_effects_auto": bc.defender_item_effects_auto,
+    "resolve_hits": bc.resolve_hits,
+    "hits_weights_for_selector": bc.hits_weights_for_selector,
+    "single_hit_roll_dist": bc.single_hit_roll_dist,
+    "ohko_probability_from_dist": bc.ohko_probability_from_dist,
+    "ko_hits_bounds": bc.ko_hits_bounds,
+    "ALL_TYPES": ALL_TYPES,
 }
+
+_MOVES_CACHE = {}
+try:
+    moves_path = Path(__file__).resolve().parents[1] / "data" / "moves_cache.json"
+    with moves_path.open(encoding="utf-8") as f:
+        _MOVES_CACHE = json.load(f)
+except Exception as e:
+    print("[App] WARNING: sin moves_cache.json:", e)
+
+def get_move_info(name: str):
+    nm = (name or "").strip()
+    m = _MOVES_CACHE.get(nm)
+    if not m:
+        return None
+    cat = (m.get("damage_class") or "").lower()
+    return {
+        "name": m.get("name", nm),
+        "type": m.get("type", "Normal"),
+        "power": int(m.get("power") or 0),
+        "category": "Physical" if cat.startswith("phys") else ("Special" if cat.startswith("spec") else "Status"),
+        "accuracy": m.get("accuracy"),
+    }
+
+services["get_move_info"] = get_move_info
 
 def load_base_stats(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
@@ -272,6 +313,14 @@ class PokemonApp(ttk.Frame):
         self.damage_tab = DamageTab(page_damage, self.services)
         
         # Fin Tab 4: Daños ---
+        
+        # --- Tab 5: Defensas ---
+        
+        page_defense = ttk.Frame(nb)
+        nb.add(page_defense, text="Defensas")
+        self.defense_tab = DefenseTab(page_defense, self.services)
+        
+        # --- Fin Tab 5 ---
 
 # Fin de clase PokemonApp
 

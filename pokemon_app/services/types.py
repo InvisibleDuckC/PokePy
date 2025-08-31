@@ -4,7 +4,7 @@ ALL_TYPES = [
     "Normal","Fire","Water","Electric","Grass","Ice",
     "Fighting","Poison","Ground","Flying","Psychic","Bug",
     "Rock","Ghost","Dragon","Dark","Steel","Fairy",
-    # Si usas Tera Stellar, podrías añadir "Stellar"
+    "Stellar"
 ]
 
 # Gen 9 type chart (multiplicadores: 2, 0.5, 0)

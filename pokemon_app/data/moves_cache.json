@@ -271,5 +271,26 @@
     "power": 70,
     "damage_class": "physical",
     "accuracy": 100
+  },
+  "Power Gem": {
+    "name": "Power Gem",
+    "type": "Rock",
+    "power": 80,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Protect": {
+    "name": "Protect",
+    "type": "Normal",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Throat Chop": {
+    "name": "Throat Chop",
+    "type": "Dark",
+    "power": 80,
+    "damage_class": "physical",
+    "accuracy": 100
   }
 }

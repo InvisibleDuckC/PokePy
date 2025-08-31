@@ -147,7 +147,7 @@ class DamageTab:
         ttk.Entry(top, textvariable=self.d_power, width=8).grid(row=3, column=3, sticky="w", padx=4, pady=4)
 
         ttk.Label(top, text="Tipo mov.:").grid(row=2, column=2, sticky="w", padx=4, pady=4)
-        ALL_TYPES = self._all_types()
+        ALL_TYPES = self.services.get("ALL_TYPES")
         ttk.Combobox(top, textvariable=self.d_move_type, width=14, values=ALL_TYPES, state="readonly")\
             .grid(row=2, column=3, sticky="w", padx=4, pady=4)
             
@@ -214,7 +214,7 @@ class DamageTab:
 
 
         # Tabla
-        cols = ("target","hp","def_base","def_ev","def_used","def_item","xef","xmod","min","max","min_pct","max_pct","ohko")
+        cols = ("target","hp","def_base","def_ev","def_used","def_item","xef","xmod","min","max","min_pct","max_pct","ohko","ohko_pct")
         self.dmg_tree = ttk.Treeview(nb_container, columns=cols, show="headings", height=18)
         self.dmg_tree.pack(fill="both", expand=True, padx=8, pady=(0,8))
         apply_damage_tags(self.dmg_tree)
@@ -249,6 +249,7 @@ class DamageTab:
             ("min_pct",90,  "% min"),
             ("max_pct",90,  "% max"),
             ("ohko",   80,  "OHKO?"),
+            ("ohko_pct",   80,  "OHKO %"),
         ]
         for key,w,txt in cfg:
             self.dmg_tree.column(key, width=w, anchor="e" if key not in ("target","def_used","ohko") else "w")
@@ -283,15 +284,6 @@ class DamageTab:
 
 
     # ---------- datos auxiliares ----------
-    def _all_types(self):
-        # intenta cargar desde services.types
-        try:
-            from ...services.types import ALL_TYPES
-            return list(ALL_TYPES)
-        except Exception:
-            return ["Normal","Fire","Water","Electric","Grass","Ice","Fighting","Poison","Ground","Flying",
-                    "Psychic","Bug","Rock","Ghost","Dragon","Dark","Steel","Fairy"]
-
     def _type_eff(self, move_type: str, def_types: list[str]) -> float:
         # Usa servicio si está disponible
         fn = self.services.get("type_effectiveness")
@@ -405,6 +397,7 @@ class DamageTab:
                 # tipo final según Tera ON/OFF
                 mt = self.d_tera_off_type.get() if self.d_tera_off_on.get() else (info["type"].capitalize() if info.get("type") else "Normal")
                 self.d_move_type.set(mt)
+    # Fin on_pick_move
 
     # ---------- Orden ----------
     def on_sort_damage(self, col: str):
@@ -630,11 +623,11 @@ class DamageTab:
                         stab_override=stab_override,
                     )
                     # Añade el multiplicador por item del atacante (Choice/Life Orb/Expert Belt/Muscle/Wise)
-                    mod *= self._attacker_item_multiplier_auto(att_item, cat, eff_mult, move_type)
+                    mod *= self.services["attacker_item_multiplier_auto"](att_item, cat, eff_mult, move_type)
                     if fmt_doubles and spread:
                         mod *= 0.75
                     xmod_val = float(mod)
-                    terrain_mod = self._terrain_xmod(params.get("terrain"), params.get("move_type"), params.get("picked_move"))
+                    terrain_mod = self.services["terrain_xmod"](params.get("terrain"), params.get("move_type"), params.get("picked_move"))
                     xmod_val *= terrain_mod
 
                 finally:
@@ -650,7 +643,7 @@ class DamageTab:
                 dmax = int(base_damage * 1.00 * xmod_val)
 
                 # Nº de golpes (Auto usa nombre del movimiento + Loaded Dice)
-                min_hits, max_hits, exp_hits, _mode = self._resolve_hits(
+                min_hits, max_hits, exp_hits, _mode = self.services["resolve_hits"](
                     params.get("picked_move"), params.get("hits"), att_item
                 )
 
@@ -660,7 +653,7 @@ class DamageTab:
 
                 min_pct = round(tdmin * 100.0 / hp_stat, 1)
                 max_pct = round(tdmax * 100.0 / hp_stat, 1)
-
+                
                 ohko = "Sí" if tdmin >= hp_stat else ("Posible" if tdmax >= hp_stat else "No")
 
                 # contadores KO
@@ -684,6 +677,14 @@ class DamageTab:
 
                 def_base_stat = int(sp.base_def if is_phys else sp.base_spd)
                 def_ev_val = int(D_evs.get("Def" if is_phys else "SpD", 0))
+                
+                # Distribución por golpe (16 rolls) y pesos por nº de golpes
+                per_hit_dist = self.services["single_hit_roll_dist"](base_damage, xmod_val)
+                hits_weights = self.services["hits_weights_for_selector"](params.get("hits"), min_hits, max_hits)
+
+                # Probabilidad de OHKO (un turno)
+                ohko_p = self.services["ohko_probability_from_dist"](per_hit_dist, hp_stat, hits_weights)
+                ohko_pct = round(ohko_p * 100.0, 1)
 
                 items.append({
                     "target": f"{sp.name} (Lv{pset.level}/{pset.nature or '—'})",
@@ -701,6 +702,7 @@ class DamageTab:
                     "max_pct": max_pct,
                     "ko": ko_label,     # <— etiqueta visible
                     "ko_best": n_best,  # <— para ordenar / tags
+                    "ohko_pct": ohko_pct,  # NUEVO
                 })
 
             # ordenar
@@ -715,6 +717,9 @@ class DamageTab:
                     return r.get("xmod_val", 1.0)
                 if key == "ko":
                     return r.get("ko_best", 99)
+                if key == "ohko_pct":
+                    return r.get("ohko_pct", 0.0)
+
 
                 return r.get(key, -999999) if r.get(key) is not None else -999999
 
@@ -739,8 +744,12 @@ class DamageTab:
                 elif kb >= 4:
                     tags.append("ko_4hko")
 
-                insert_with_zebra(self.dmg_tree, values=(r["target"], r["hp"], r["def_base"], r["def_ev"], r["def_used"], r["def_item"],
-                            r["xef"], r["xmod"], r["min"], r["max"], r["min_pct"], r["max_pct"], r["ko"], r["ko_best"]), tags=tuple(tags))
+                insert_with_zebra(self.dmg_tree, 
+                                  values=(r["target"], r["hp"], r["def_base"], 
+                                          r["def_ev"], r["def_used"], r["def_item"], 
+                                          r["xef"], r["xmod"], r["min"], r["max"], 
+                                          r["min_pct"], r["max_pct"], r["ko"], f"{r['ohko_pct']:.1f}%"), 
+                                  tags=tuple(tags))
 
         finally:
             # ocultar loader siempre, incluso si hay excepción
@@ -766,57 +775,6 @@ class DamageTab:
             return 1.1
         return 1.0
     
-    def _attacker_item_multiplier_auto(self, item_label: str, category: str, eff_mult: float, move_type: str) -> float:
-        """
-        Multiplicador por item del atacante, según el nombre del ítem del set.
-        category: 'physical' | 'special'
-        """
-        s = (item_label or "").strip().lower()
-        if not s:
-            return 1.0
-
-        # Choice
-        if "choice band" in s and category == "physical":
-            return 1.5
-        if "choice specs" in s and category == "special":
-            return 1.5
-        # Life Orb
-        if "life orb" in s:
-            return 1.3
-        # Expert Belt (si es superefectivo)
-        if "expert belt" in s and eff_mult > 1.0:
-            return 1.2
-        # Muscle Band (físico)
-        if "muscle band" in s and category == "physical":
-            return 1.1
-        # Wise Glasses (especial)
-        if "wise glasses" in s and category == "special":
-            return 1.1
-
-        type_item_map = {
-            "charcoal": "Fire",
-            "mystic water": "Water",
-            "magnet": "Electric",
-            "miracle seed": "Grass",
-            "never-melt ice": "Ice",
-            "black belt": "Fighting",
-            "poison barb": "Poison",
-            "soft sand": "Ground",
-            "sharp beak": "Flying",
-            "twisted spoon": "Psychic",
-            "silver powder": "Bug",
-            "hard stone": "Rock",
-            "spell tag": "Ghost",
-            "dragon fang": "Dragon",
-            "black glasses": "Dark",
-            "metal coat": "Steel",
-            "pixie plate": "Fairy",  # (u objetos equivalentes)
-        }
-        for key, t in type_item_map.items():
-            if key in s and (move_type or "").capitalize() == t:
-                return 1.2
-
-        return 1.0
 
     def _defender_item_effects_auto(self, item_label: str, category: str, move_type: str, eff_mult: float) -> tuple[float, float]:
         """
@@ -958,60 +916,6 @@ class DamageTab:
                 self.att_stat_var.set(f"SpA {stats['SpA']}")
                 
 
-    def _resolve_hits(self, picked_move: str, hits_sel: str, att_item: str):
-        """
-        Devuelve (min_hits, max_hits, expected_hits, mode)
-        - mode: "fixed" (N fijo), "range" (min..max), "auto" (detectado)
-        """
-        mv = (picked_move or "").strip().lower()
-        item = (att_item or "").strip().lower()
-        sel = (hits_sel or "Auto").strip().lower()
-
-        PRESETS = {
-            # fijos 2
-            "double hit": (2, 2), "double kick": (2, 2), "dual chop": (2, 2),
-            "bonemerang": (2, 2), "twinneedle": (2, 2), "dragon darts": (2, 2),
-            # fijos 3
-            "surging strikes": (3, 3), "triple kick": (3, 3), "triple axel": (3, 3),
-            # 2–5
-            "bullet seed": (2, 5), "icicle spear": (2, 5), "rock blast": (2, 5),
-            "arm thrust": (2, 5), "fury swipes": (2, 5), "pin missile": (2, 5),
-            "scale shot": (2, 5), "water shuriken": (2, 5),
-            # 2–10 aprox
-            "population bomb": (2, 10),
-        }
-
-        def dist_2_5_expected():
-            # 37.5%:2, 37.5%:3, 12.5%:4, 12.5%:5 → 3.0 esperado
-            return 3.0
-
-        # Selección manual
-        if sel in {"1","2","3","4","5","10"}:
-            n = int(sel); return (n, n, float(n), "fixed")
-        if sel.startswith("2-5"):
-            if "loaded dice" in item:
-                return (4, 5, 4.5, "range")
-            return (2, 5, dist_2_5_expected(), "range")
-        if sel.startswith("4-5"):
-            return (4, 5, 4.5, "range")
-
-        # Auto por movimiento
-        if mv in PRESETS:
-            lo, hi = PRESETS[mv]
-            if (lo, hi) == (2, 5) and "loaded dice" in item:
-                return (4, 5, 4.5, "auto")
-            if (lo, hi) == (2, 5):
-                esp = 3.0
-            elif (lo, hi) == (2, 10):
-                esp = 6.0
-            else:
-                esp = (lo + hi) / 2.0
-            return (lo, hi, esp, "auto")
-
-        # fallback: 1 golpe
-        return (1, 1, 1.0, "fixed")
-
-
     def _reload_attackers(self):
         """Reconstruye la lista desde DB y preserva selección/último visto."""
         self.d_attacker_map.clear()
@@ -1085,43 +989,6 @@ class DamageTab:
         self._update_attacker_item_and_stat()
         self.on_pick_move()  # actualiza datos del movimiento
         
-    def _terrain_xmod(self, terrain: str | None, move_type: str | None, picked_move: str | None) -> float:
-        """
-        Devuelve el multiplicador por 'Campo':
-        - Eléctrico: +30% a movimientos Eléctricos del atacante (1.3)
-        - Psíquico:  +30% a movimientos Psíquicos del atacante (1.3)
-        - Hierba:    +30% a movimientos de tipo Planta (1.3)
-                    y -50% a Earthquake/Bulldoze/Magnitude (0.5)
-        - Niebla:    -50% a movimientos Dragón (0.5)
-        Nota: En juegos aplica a 'grounded'. Aquí asumimos grounded (simple).
-        """
-        t = (terrain or "").strip().lower()
-        mt = (move_type or "").strip().lower()
-        mv = (picked_move or "").strip().lower()
-
-        # normaliza acentos
-        def norm(s: str) -> str:
-            return (s.replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u"))
-        t, mt = norm(t), norm(mt)
-
-        mod = 1.0
-        if t in {"electrico", "electrico/campo", "campo electrico", "electrico campo", "electrico terrain", "electric", "electric terrain"}:
-            if mt in {"electrico", "electric"}:
-                mod *= 1.3
-        elif t in {"psiquico", "campo psiquico", "psiquico terrain", "psiquico/campo", "psychic", "psychic terrain"}:
-            if mt in {"psiquico", "psychic"}:
-                mod *= 1.3
-        elif t in {"hierba", "campo hierba", "hierba terrain", "grassy", "grassy terrain", "planta"}:
-            if mt in {"hierba", "grassy", "planta", "grass"}:
-                mod *= 1.3
-            # Reducción de movimientos sísmicos
-            if mv in {"earthquake", "bulldoze", "magnitude"}:
-                mod *= 0.5
-        elif t in {"niebla", "campo niebla", "misty", "misty terrain"}:
-            if mt in {"dragon", "dragon/dragón", "dragon/dragon", "dragon type"} or mt.startswith("dragon"):
-                mod *= 0.5
-
-        return mod
 
     def _on_notebook_tab_changed(self, event=None):
         """Si la pestaña visible es ésta, recarga atacantes desde DB y sincroniza UI."""
