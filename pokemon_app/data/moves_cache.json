@@ -292,5 +292,502 @@
     "power": 80,
     "damage_class": "physical",
     "accuracy": 100
+  },
+  "Close Combat": {
+    "name": "Close Combat",
+    "type": "Fighting",
+    "power": 120,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Parting Shot": {
+    "name": "Parting Shot",
+    "type": "Dark",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": 100
+  },
+  "Fake Out": {
+    "name": "Fake Out",
+    "type": "Normal",
+    "power": 40,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Dire Claw": {
+    "name": "Dire Claw",
+    "type": "Poison",
+    "power": 80,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Spiky Shield": {
+    "name": "Spiky Shield",
+    "type": "Grass",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Sludge Bomb": {
+    "name": "Sludge Bomb",
+    "type": "Poison",
+    "power": 90,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Tailwind": {
+    "name": "Tailwind",
+    "type": "Flying",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Haze": {
+    "name": "Haze",
+    "type": "Ice",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Nasty Plot": {
+    "name": "Nasty Plot",
+    "type": "Dark",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Trick": {
+    "name": "Trick",
+    "type": "Psychic",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": 100
+  },
+  "Extreme Speed": {
+    "name": "Extreme Speed",
+    "type": "Normal",
+    "power": 80,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Icy Wind": {
+    "name": "Icy Wind",
+    "type": "Ice",
+    "power": 55,
+    "damage_class": "special",
+    "accuracy": 95
+  },
+  "Taunt": {
+    "name": "Taunt",
+    "type": "Dark",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": 100
+  },
+  "Clear Smog": {
+    "name": "Clear Smog",
+    "type": "Poison",
+    "power": 50,
+    "damage_class": "special",
+    "accuracy": null
+  },
+  "Will-O-Wisp": {
+    "name": "Will-O-Wisp",
+    "type": "Fire",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": 85
+  },
+  "Moonblast": {
+    "name": "Moonblast",
+    "type": "Fairy",
+    "power": 95,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Encore": {
+    "name": "Encore",
+    "type": "Normal",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": 100
+  },
+  "Dual Wingbeat": {
+    "name": "Dual Wingbeat",
+    "type": "Flying",
+    "power": 40,
+    "damage_class": "physical",
+    "accuracy": 90
+  },
+  "Swords Dance": {
+    "name": "Swords Dance",
+    "type": "Normal",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Flip Turn": {
+    "name": "Flip Turn",
+    "type": "Water",
+    "power": 60,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Stomping Tantrum": {
+    "name": "Stomping Tantrum",
+    "type": "Ground",
+    "power": 75,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Trailblaze": {
+    "name": "Trailblaze",
+    "type": "Grass",
+    "power": 50,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Air Slash": {
+    "name": "Air Slash",
+    "type": "Flying",
+    "power": 75,
+    "damage_class": "special",
+    "accuracy": 95
+  },
+  "Roost": {
+    "name": "Roost",
+    "type": "Flying",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Triple Axel": {
+    "name": "Triple Axel",
+    "type": "Ice",
+    "power": 20,
+    "damage_class": "physical",
+    "accuracy": 90
+  },
+  "Ice Shard": {
+    "name": "Ice Shard",
+    "type": "Ice",
+    "power": 40,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Body Press": {
+    "name": "Body Press",
+    "type": "Fighting",
+    "power": 80,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Snarl": {
+    "name": "Snarl",
+    "type": "Dark",
+    "power": 55,
+    "damage_class": "special",
+    "accuracy": 95
+  },
+  "Dragon Darts": {
+    "name": "Dragon Darts",
+    "type": "Dragon",
+    "power": 50,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Focus Energy": {
+    "name": "Focus Energy",
+    "type": "Normal",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Wide Guard": {
+    "name": "Wide Guard",
+    "type": "Rock",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Matcha Gotcha": {
+    "name": "Matcha Gotcha",
+    "type": "Grass",
+    "power": 80,
+    "damage_class": "special",
+    "accuracy": 90
+  },
+  "Life Dew": {
+    "name": "Life Dew",
+    "type": "Water",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Trick Room": {
+    "name": "Trick Room",
+    "type": "Psychic",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Rage Powder": {
+    "name": "Rage Powder",
+    "type": "Bug",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Facade": {
+    "name": "Facade",
+    "type": "Normal",
+    "power": 70,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Struggle Bug": {
+    "name": "Struggle Bug",
+    "type": "Bug",
+    "power": 50,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Overheat": {
+    "name": "Overheat",
+    "type": "Fire",
+    "power": 130,
+    "damage_class": "special",
+    "accuracy": 90
+  },
+  "Spirit Break": {
+    "name": "Spirit Break",
+    "type": "Fairy",
+    "power": 75,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Reflect": {
+    "name": "Reflect",
+    "type": "Psychic",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Light Screen": {
+    "name": "Light Screen",
+    "type": "Psychic",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Rage Fist": {
+    "name": "Rage Fist",
+    "type": "Ghost",
+    "power": 50,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Bulk Up": {
+    "name": "Bulk Up",
+    "type": "Fighting",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Drain Punch": {
+    "name": "Drain Punch",
+    "type": "Fighting",
+    "power": 75,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Recover": {
+    "name": "Recover",
+    "type": "Normal",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Tri Attack": {
+    "name": "Tri Attack",
+    "type": "Normal",
+    "power": 80,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Spore": {
+    "name": "Spore",
+    "type": "Grass",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": 100
+  },
+  "Pollen Puff": {
+    "name": "Pollen Puff",
+    "type": "Bug",
+    "power": 90,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Psychic": {
+    "name": "Psychic",
+    "type": "Psychic",
+    "power": 90,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Weather Ball": {
+    "name": "Weather Ball",
+    "type": "Normal",
+    "power": 50,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Perish Song": {
+    "name": "Perish Song",
+    "type": "Normal",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Muddy Water": {
+    "name": "Muddy Water",
+    "type": "Water",
+    "power": 90,
+    "damage_class": "special",
+    "accuracy": 85
+  },
+  "Dragon Pulse": {
+    "name": "Dragon Pulse",
+    "type": "Dragon",
+    "power": 85,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Expanding Force": {
+    "name": "Expanding Force",
+    "type": "Psychic",
+    "power": 80,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Calm Mind": {
+    "name": "Calm Mind",
+    "type": "Psychic",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Meteor Beam": {
+    "name": "Meteor Beam",
+    "type": "Rock",
+    "power": 120,
+    "damage_class": "special",
+    "accuracy": 90
+  },
+  "Aurora Veil": {
+    "name": "Aurora Veil",
+    "type": "Ice",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Aqua Jet": {
+    "name": "Aqua Jet",
+    "type": "Water",
+    "power": 40,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Kowtow Cleave": {
+    "name": "Kowtow Cleave",
+    "type": "Dark",
+    "power": 85,
+    "damage_class": "physical",
+    "accuracy": null
+  },
+  "Grassy Glide": {
+    "name": "Grassy Glide",
+    "type": "Grass",
+    "power": 55,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Quiver Dance": {
+    "name": "Quiver Dance",
+    "type": "Bug",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Follow Me": {
+    "name": "Follow Me",
+    "type": "Normal",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Helping Hand": {
+    "name": "Helping Hand",
+    "type": "Normal",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Bitter Blade": {
+    "name": "Bitter Blade",
+    "type": "Fire",
+    "power": 90,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Shadow Sneak": {
+    "name": "Shadow Sneak",
+    "type": "Ghost",
+    "power": 40,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Ice Beam": {
+    "name": "Ice Beam",
+    "type": "Ice",
+    "power": 90,
+    "damage_class": "special",
+    "accuracy": 100
+  },
+  "Low Kick": {
+    "name": "Low Kick",
+    "type": "Fighting",
+    "power": null,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "Coaching": {
+    "name": "Coaching",
+    "type": "Fighting",
+    "power": null,
+    "damage_class": "status",
+    "accuracy": null
+  },
+  "Power Trip": {
+    "name": "Power Trip",
+    "type": "Dark",
+    "power": 20,
+    "damage_class": "physical",
+    "accuracy": 100
+  },
+  "High Horsepower": {
+    "name": "High Horsepower",
+    "type": "Ground",
+    "power": 95,
+    "damage_class": "physical",
+    "accuracy": 95
+  },
+  "Dragon Claw": {
+    "name": "Dragon Claw",
+    "type": "Dragon",
+    "power": 80,
+    "damage_class": "physical",
+    "accuracy": 100
   }
 }

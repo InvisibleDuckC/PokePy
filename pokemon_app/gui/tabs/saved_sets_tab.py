@@ -352,10 +352,14 @@ class SavedSetsTab:
         sel = self.tree.selection()
         if not sel:
             return None
+        item = sel[0]
         try:
-            return int(sel[0])
+            vals = self.tree.item(item, "values")
+            # la primera columna es "id"
+            return int(vals[0])
         except Exception:
             return None
+
 
     def on_delete(self):
         set_id = self._selected_set_id()

@@ -223,9 +223,28 @@ class DefenseTab(ttk.Frame):
 
             best = None  # guardará dict del mejor movimiento
             for mv in moves:
-                m = self._move_info(mv)
-                if not m or (m.get("power") or 0) <= 0:
+                get_move_info = self.services.get("get_move_info", self._move_info)
+                m = get_move_info(mv)
+
+                if not m:
+                    print(f"[DefenseTab] skip '{mv}': lookup None")
                     continue
+
+                power = int(m.get("power") or 0)
+                #if power <= 0:
+                #    print(f"[DefenseTab] skip '{mv}': power={power} (¿nombre distinto al cache?)")
+                #    continue
+                #if power <= 0:
+                #    # intenta poder variable
+                #    wkg = getattr(def_sp, "weight_kg", None)  # o desde Species/DB como lo tengas
+                #    vp = self.services.get("variable_power", lambda *_: None)(m.get("name",""), wkg)
+                #    if vp:
+                #        power = vp
+                #if power <= 0:
+                #    print(f"[DefenseTab] skip '{mv}': power={power} (variable o status)")
+                #    continue
+
+                
                 power = int(m.get("power") or 0)
                 mcat = (m.get("category") or "physical").lower()
                 mtype = (m.get("type") or "Normal").capitalize()
@@ -248,6 +267,10 @@ class DefenseTab(ttk.Frame):
                         eff_mult = float(type_eff_fn(mtype, def_types))
                     except Exception:
                         eff_mult = 1.0
+                if eff_mult == 0.0:
+                    print(f"[DefenseTab] skip '{m['name']}': inmunidad (type={mtype}, def={def_types})")
+                    # puedes decidir seguir y mostrar 0%, pero por ahora mantén el continue si lo tenías
+                    # continue
 
                 # --- ÍTEM del defensor: Assault Vest (def_mult) + Bayas (eff_adj) ---
                 def_item = (defender.item or "")

@@ -194,3 +194,18 @@ def ko_hits_bounds(hp: int, dmin: int, dmax: int, min_hits: int, max_hits: int) 
     n_best  = 999 if tdmax <= 0 else math.ceil(hp / max(1, dmax))
     n_worst = 999 if tdmin <= 0 else math.ceil(hp / max(1, dmin))
     return n_best, n_worst
+
+# battle_calc.py (helper)
+def variable_power(move_name: str, defender_weight_kg: float | None) -> int | None:
+    mv = (move_name or "").strip().lower()
+    if mv in ("low kick", "grass knot"):
+        w = defender_weight_kg or 0.0
+        # Tiers estándar (Gen 9): 20/40/60/80/100/120
+        if w < 10:   return 20
+        if w < 25:   return 20
+        if w < 50:   return 40
+        if w < 100:  return 60
+        if w < 200:  return 80
+        if w < 1000: return 100
+        return 120
+    return None

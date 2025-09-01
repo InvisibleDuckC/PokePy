@@ -1,10 +1,11 @@
 import math
 import os
 from datetime import datetime
-import json
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, Spinbox
 from pathlib import Path
+import json, re, unicodedata
+
 
 
 from sqlalchemy.orm import Session
@@ -168,26 +169,92 @@ services = {
     "ALL_TYPES": ALL_TYPES,
 }
 
-_MOVES_CACHE = {}
-try:
-    moves_path = Path(__file__).resolve().parents[1] / "data" / "moves_cache.json"
-    with moves_path.open(encoding="utf-8") as f:
-        _MOVES_CACHE = json.load(f)
-except Exception as e:
-    print("[App] WARNING: sin moves_cache.json:", e)
+
+# ruta al cache
+_MOVES_PATH = Path(__file__).resolve().parents[1] / "data" / "moves_cache.json"
+
+def _load_moves():
+    try:
+        with _MOVES_PATH.open(encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+_MOVES_CACHE = _load_moves()
+
+def _strip_accents(s: str) -> str:
+    s = unicodedata.normalize("NFD", s)
+    return "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
+
+def _canon(s: str) -> str:
+    s = _strip_accents((s or "").strip().lower())
+    s = re.sub(r"[–—\-]+", " ", s)
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+# alias ES → EN (extiéndelo según uses)
+_MOVE_ALIASES = {
+    _canon("A Bocajarro"): "Close Combat",
+    _canon("Puño Férreo"): "Iron Fist",   # (ej. habilidad si la usaras)
+    _canon("Tajo Umbrío"): "Throat Chop",
+    _canon("Cascada"): "Waterfall",
+    _canon("Demolición"): "Brick Break",
+    _canon("Nudo Hierba"): "Grass Knot",
+    # ...
+}
+
+# índice canónico del cache actual
+def _build_index():
+    idx = {}
+    for name, meta in _MOVES_CACHE.items():
+        c = _canon(name)
+        idx[c] = (name, meta)
+        idx[c.replace(" ", "")] = (name, meta)
+    return idx
+
+_MOVES_BY_CANON = _build_index()
 
 def get_move_info(name: str):
-    nm = (name or "").strip()
-    m = _MOVES_CACHE.get(nm)
-    if not m:
+    global _MOVES_CACHE, _MOVES_BY_CANON
+    raw = (name or "").strip()
+    if not raw:
         return None
-    cat = (m.get("damage_class") or "").lower()
+
+    key = _canon(raw)
+    key = _canon(_MOVE_ALIASES.get(key, raw))
+
+    hit = _MOVES_BY_CANON.get(key) or _MOVES_BY_CANON.get(key.replace(" ", ""))
+    meta = None
+    if hit:
+        name, meta = hit
+    else:
+        # fallback: intentar rellenar desde PokéAPI y recargar una vez
+        try:
+            from pokemon_app.services.move_provider import ensure_move_in_json
+            ensure_move_in_json(raw, str(_MOVES_PATH))
+            _MOVES_CACHE = _load_moves()
+            _MOVES_BY_CANON = _build_index()
+            hit = _MOVES_BY_CANON.get(key) or _MOVES_BY_CANON.get(key.replace(" ", ""))
+            if hit:
+                name, meta = hit
+        except Exception:
+            pass
+
+    if not meta:
+        # último intento exacto (por si el cache viene con capitalización distinta)
+        meta = _MOVES_CACHE.get(raw) or _MOVES_CACHE.get(raw.title())
+        if not meta:
+            return None
+        name = meta.get("name", raw)
+
+    dmgc = (meta.get("damage_class") or "").lower()
     return {
-        "name": m.get("name", nm),
-        "type": m.get("type", "Normal"),
-        "power": int(m.get("power") or 0),
-        "category": "Physical" if cat.startswith("phys") else ("Special" if cat.startswith("spec") else "Status"),
-        "accuracy": m.get("accuracy"),
+        "name": name,
+        "type": meta.get("type", "Normal"),
+        "power": int(meta.get("power") or 0),  # ver nota de Low Kick abajo
+        "category": "Physical" if dmgc.startswith("phys")
+                    else ("Special" if dmgc.startswith("spec") else "Status"),
+        "accuracy": meta.get("accuracy"),
     }
 
 services["get_move_info"] = get_move_info
